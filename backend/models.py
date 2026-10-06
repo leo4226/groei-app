@@ -60,6 +60,9 @@ class UserOut(BaseModel):
     name: str
     avatar: str | None = None
     language: Literal['nl', 'en'] = 'nl'
+    # Which account this profile belongs to, so a client can find its own row
+    # instead of guessing from a device-local "active user".
+    account_id: int | None = None
 
 
 class UserLanguageUpdate(BaseModel):
@@ -275,7 +278,9 @@ class TopAlert(BaseModel):
 class CareAction(BaseModel):
     plant_id: int
     care_type: str
-    user_id: int
+    # Ignored: the server attributes care to the signed-in account's own
+    # users row (services/identity.py). Kept so older clients still validate.
+    user_id: int | None = None
     schedule_id: int | None = None
     notes: str | None = None
 
@@ -295,7 +300,9 @@ class CareUndo(BaseModel):
 class GardenCareCompleteIn(BaseModel):
     care_type: str
     completed_at: date | None = None
-    user_id: int
+    # Ignored: the server attributes care to the signed-in account's own
+    # users row (services/identity.py). Kept so older clients still validate.
+    user_id: int | None = None
     map_id: int
     schedule_ids: list[int] | None = None
 
@@ -354,7 +361,9 @@ class MapWateringRoundOut(BaseModel):
 
 class MapWateringRoundCompleteIn(BaseModel):
     completed_at: date | None = None
-    user_id: int
+    # Ignored: the server attributes care to the signed-in account's own
+    # users row (services/identity.py). Kept so older clients still validate.
+    user_id: int | None = None
     schedule_ids: list[int]
 
     @field_validator('schedule_ids')
@@ -372,7 +381,9 @@ class MoistureCheckResolveIn(BaseModel):
     check_schedule_ids: list[int]
     outcome: Literal['still_moist', 'watered']
     completed_at: date
-    user_id: int
+    # Ignored: the server attributes care to the signed-in account's own
+    # users row (services/identity.py). Kept so older clients still validate.
+    user_id: int | None = None
 
     @field_validator('check_schedule_ids')
     @classmethod

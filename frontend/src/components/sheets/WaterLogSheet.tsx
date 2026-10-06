@@ -1,6 +1,7 @@
 import { useT } from '../../context/LanguageContext'
 import { createPortal } from 'react-dom'
 import CareIcon, { type CareIconType } from '../ui/CareIcon'
+import { localIsoDate } from '../../utils/dateFormat'
 
 interface Props {
   /** 'water' or 'fertilize' — controls header icon and button labels */
@@ -67,7 +68,7 @@ export default function GardenActionSheet({
         buttonLabel: t.mapPage.gardenFertilizeButton,
         deleteLabel: t.mapPage.gardenFertilizeDelete,
       }
-  const todayStr = new Date().toISOString().slice(0, 10)
+  const todayStr = localIsoDate()
 
   return createPortal(
     <>

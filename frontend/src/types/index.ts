@@ -3,6 +3,8 @@ export interface User {
   name: string
   avatar: string | null
   language: 'nl' | 'en'
+  /** The account this profile belongs to (null only for legacy rows). */
+  account_id?: number | null
 }
 
 export interface Location {

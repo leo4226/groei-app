@@ -97,7 +97,7 @@ async def _seed_single_grouped_water(db, client, auth_header):
     await db.execute('PRAGMA foreign_keys = ON')
     await db.executescript(GARDEN_OPERATION_SCHEMA)
     await db.executescript("""
-        INSERT INTO users (id, name, household_id) VALUES (1, 'Leon', 1);
+        INSERT INTO users (id, name, household_id, account_id) VALUES (1, 'Leon', 1, 1);
         INSERT INTO maps (id, name, map_type, household_id)
         VALUES (1, 'Garden', 'outdoor', 1);
         INSERT INTO plants (id, name, household_id, map_id, is_active)
@@ -338,7 +338,7 @@ async def test_complete_and_undo_grouped_indoor_care_is_map_scoped(
     await db.execute('PRAGMA foreign_keys = ON')
     await db.executescript(GARDEN_OPERATION_SCHEMA)
     await db.executescript("""
-        INSERT INTO users (id, name, household_id) VALUES (1, 'Leon', 1);
+        INSERT INTO users (id, name, household_id, account_id) VALUES (1, 'Leon', 1, 1);
         INSERT INTO maps (id, name, map_type, household_id) VALUES
           (1, 'Garden', 'outdoor', 1), (2, 'Living room', 'indoor', 1);
         INSERT INTO plants (id, name, household_id, map_id, is_active) VALUES

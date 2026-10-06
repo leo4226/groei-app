@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from auth import require_editor
+from services.identity import find_caller_user_id
 from care_types import STEKKIE_ACTIONABLE_CARE_TYPES
 from database import db_dep
 from services.environment import get_rain_data, get_temp_data
@@ -1184,11 +1185,15 @@ async def _build_garden_context(
 async def proxy_chat(req: ChatRequest, db=Depends(db_dep), account=Depends(require_editor)):
     """Forward chat message to Stekkie with structured bounded garden context."""
     try:
+        # The caller's own profile decides the fallback language; the client's
+        # active_user_id was a device-local guess that defaulted to the
+        # household's first member.
+        own_user_id = await find_caller_user_id(db, account)
         garden_context, plants_ctx, maps_ctx, bio_ctx = await _build_garden_context(
             db,
             account["household_id"],
             page_context=req.page_context,
-            active_user_id=req.active_user_id,
+            active_user_id=own_user_id if own_user_id is not None else req.active_user_id,
             requested_language=req.language,
         )
 

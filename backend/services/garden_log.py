@@ -81,7 +81,13 @@ async def log_garden_water(db, watered_at: date, watered_by: int | None, water_a
         """SELECT cs.id, cs.interval_days, cs.season_adjust
            FROM care_schedules cs
            JOIN plants p ON cs.plant_id = p.id
-           WHERE cs.care_type = 'water' AND cs.is_active = 1 AND p.is_active = 1 AND p.household_id = ?""",
+           LEFT JOIN maps m ON m.id = p.map_id
+           WHERE cs.care_type = 'water' AND cs.is_active = 1 AND p.is_active = 1
+             AND cs.is_ephemeral = 0
+             AND p.household_id = ?
+             -- "The garden" is outdoors: a garden-wide log must not advance
+             -- houseplants' schedules (they used to be swept along).
+             AND COALESCE(m.map_type, 'outdoor') <> 'indoor'""",
         (household_id,),
     )
     updated = 0
@@ -112,7 +118,13 @@ async def log_garden_fertilize(db, fertilized_at: date, fertilized_by: int | Non
         """SELECT cs.id, cs.interval_days, cs.season_adjust
            FROM care_schedules cs
            JOIN plants p ON cs.plant_id = p.id
-           WHERE cs.care_type = 'fertilize' AND cs.is_active = 1 AND p.is_active = 1 AND p.household_id = ?""",
+           LEFT JOIN maps m ON m.id = p.map_id
+           WHERE cs.care_type = 'fertilize' AND cs.is_active = 1 AND p.is_active = 1
+             AND cs.is_ephemeral = 0
+             AND p.household_id = ?
+             -- "The garden" is outdoors: a garden-wide log must not advance
+             -- houseplants' schedules (they used to be swept along).
+             AND COALESCE(m.map_type, 'outdoor') <> 'indoor'""",
         (household_id,),
     )
     updated = 0

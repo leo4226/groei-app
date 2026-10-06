@@ -18,7 +18,7 @@ async def test_chat_proxy_sends_bounded_structured_garden_context(
         "CREATE TABLE plant_species (id INTEGER PRIMARY KEY, common_name_nl TEXT, common_name_en TEXT, latin_name TEXT)"
     )
     await seeded_db.execute(
-        "INSERT INTO users (id, name, household_id, language) VALUES (1, 'Leon', 1, 'en')"
+        "INSERT INTO users (id, name, household_id, language, account_id) VALUES (1, 'Leon', 1, 'en', 1)"
     )
     await seeded_db.execute(
         "INSERT INTO maps (id, name, slug, map_type, household_id, sort_order) VALUES (10, 'Balcony', 'balcony', 'outdoor', 1, 1)"
@@ -144,7 +144,7 @@ async def test_chat_proxy_prefers_requested_language_over_profile(
         "CREATE TABLE plant_species (id INTEGER PRIMARY KEY, common_name_nl TEXT, common_name_en TEXT, latin_name TEXT)"
     )
     await seeded_db.execute(
-        "INSERT INTO users (id, name, household_id, language) VALUES (1, 'Leon', 1, 'nl')"
+        "INSERT INTO users (id, name, household_id, language, account_id) VALUES (1, 'Leon', 1, 'nl', 1)"
     )
     await seeded_db.commit()
 
@@ -211,7 +211,7 @@ async def test_chat_context_prioritizes_focused_plant_and_marks_truncation(
         "CREATE TABLE plant_species (id INTEGER PRIMARY KEY, common_name_nl TEXT, common_name_en TEXT, latin_name TEXT)"
     )
     await seeded_db.execute(
-        "INSERT INTO users (id, name, household_id, language) VALUES (1, 'Leon', 1, 'en')"
+        "INSERT INTO users (id, name, household_id, language, account_id) VALUES (1, 'Leon', 1, 'en', 1)"
     )
     await seeded_db.execute(
         "INSERT INTO maps (id, name, slug, map_type, household_id, sort_order) VALUES (10, 'Balcony', 'balcony', 'outdoor', 1, 1)"

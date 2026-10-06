@@ -25,7 +25,7 @@ async def _prepare_spot_db(seeded_db):
         )"""
     )
     await seeded_db.execute(
-        "INSERT INTO users (id, name, household_id, language) VALUES (1, 'Leon', 1, 'nl')"
+        "INSERT INTO users (id, name, household_id, language, account_id) VALUES (1, 'Leon', 1, 'nl', 1)"
     )
     await seeded_db.execute(
         "INSERT INTO maps (id, name, slug, map_type, household_id, sort_order) VALUES (10, 'Achtertuin', 'garden', 'outdoor', 1, 1)"

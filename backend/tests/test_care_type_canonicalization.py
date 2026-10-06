@@ -35,7 +35,7 @@ async def test_legacy_repot_done_payload_updates_canonical_schedule(
         );
         INSERT INTO plants (id, name, household_id, is_active)
         VALUES (41, 'Monstera', 1, 1);
-        INSERT INTO users (id, name, household_id) VALUES (1, 'Test', 1);
+        INSERT INTO users (id, name, household_id, account_id) VALUES (1, 'Test', 1, 1);
         INSERT INTO care_schedules
             (plant_id, care_type, interval_days, next_due, is_active)
         VALUES (41, 'repot', 180, '2026-07-01', 1);
@@ -73,7 +73,7 @@ async def test_feed_done_uses_default_interval_when_schedule_interval_invalid(
         VALUES (5, 'Garden', 'outdoor', 1);
         INSERT INTO plants (id, name, household_id, map_id, is_active)
         VALUES (45, 'Tomato', 1, 5, 1);
-        INSERT INTO users (id, name, household_id) VALUES (1, 'Test', 1);
+        INSERT INTO users (id, name, household_id, account_id) VALUES (1, 'Test', 1, 1);
         INSERT INTO care_schedules
             (plant_id, care_type, interval_days, next_due, is_active)
         VALUES (45, 'fertilize', 0, '2026-07-01', 1);
@@ -109,7 +109,7 @@ async def test_legacy_weather_skip_payload_logs_canonical_type(
         );
         INSERT INTO plants (id, name, household_id, is_active)
         VALUES (44, 'Oleander', 1, 1);
-        INSERT INTO users (id, name, household_id) VALUES (1, 'Test', 1);
+        INSERT INTO users (id, name, household_id, account_id) VALUES (1, 'Test', 1, 1);
         INSERT INTO care_schedules
             (plant_id, care_type, interval_days, next_due, is_active, is_ephemeral)
         VALUES (44, 'heat_protect', 1, '2026-07-01', 1, 1);

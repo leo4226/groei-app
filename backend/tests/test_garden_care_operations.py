@@ -32,7 +32,7 @@ async def test_complete_and_undo_garden_care_only_changes_outdoor_schedules(clie
     await db.execute('PRAGMA foreign_keys = ON')
     await db.executescript(EXTRA_SCHEMA)
     await db.executescript("""
-        INSERT INTO users (id, name, household_id) VALUES (1, 'Leon', 1);
+        INSERT INTO users (id, name, household_id, account_id) VALUES (1, 'Leon', 1, 1);
         INSERT INTO maps (id, name, map_type, household_id) VALUES
           (1, 'Garden', 'outdoor', 1), (2, 'House', 'indoor', 1), (3, 'Side garden', 'outdoor', 1);
         INSERT INTO plants (id, name, household_id, map_id, is_active) VALUES
@@ -77,7 +77,7 @@ async def selectable_garden_db(seeded_db):
     await db.execute('PRAGMA foreign_keys = ON')
     await db.executescript(EXTRA_SCHEMA)
     await db.executescript("""
-        INSERT INTO users (id, name, household_id) VALUES (1, 'Leon', 1);
+        INSERT INTO users (id, name, household_id, account_id) VALUES (1, 'Leon', 1, 1);
         INSERT INTO maps (id, name, map_type, household_id) VALUES
           (1, 'Garden', 'outdoor', 1), (2, 'House', 'indoor', 1);
         INSERT INTO plants (id, name, household_id, map_id, is_active) VALUES
@@ -264,7 +264,7 @@ async def test_early_routine_completion_advances_from_canonical_due_and_undoes(
     await db.execute('PRAGMA foreign_keys = ON')
     await db.executescript(EXTRA_SCHEMA)
     await db.executescript("""
-        INSERT INTO users (id, name, household_id) VALUES (1, 'Leon', 1);
+        INSERT INTO users (id, name, household_id, account_id) VALUES (1, 'Leon', 1, 1);
         INSERT INTO maps (id, name, map_type, household_id)
         VALUES (1, 'Garden', 'outdoor', 1);
         INSERT INTO plants (id, name, household_id, map_id, is_active)
@@ -314,7 +314,7 @@ async def mixed_routine_garden_db(seeded_db):
     await db.execute('PRAGMA foreign_keys = ON')
     await db.executescript(EXTRA_SCHEMA)
     await db.executescript("""
-        INSERT INTO users (id, name, household_id) VALUES (1, 'Leon', 1);
+        INSERT INTO users (id, name, household_id, account_id) VALUES (1, 'Leon', 1, 1);
         INSERT INTO maps (id, name, map_type, household_id)
         VALUES (1, 'Garden', 'outdoor', 1);
         INSERT INTO plants (id, name, household_id, map_id, is_active) VALUES

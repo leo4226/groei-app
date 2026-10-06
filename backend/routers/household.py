@@ -8,6 +8,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from database import db_dep
 from services.calendar_feed_cache import forget_account_feeds
+from services.db_transactions import database_transaction
+from services.rate_limit import rate_limit
 from models import (
     InviteInput, InviteOutput, JoinInput, AuthResponse, HouseholdUpdate,
     HouseholdMemberOut, HouseholdMemberUpdate, RoleChangeInput,
@@ -83,7 +85,13 @@ async def create_invite(
     return InviteOutput(code=code, expires_at=expires_at.isoformat(), role=role)
 
 
-@router.post("/join", response_model=AuthResponse)
+# Invite codes are six characters from a 32-letter alphabet: guessable by
+# brute force without a limit, since a wrong code costs a single SELECT.
+@router.post(
+    "/join",
+    response_model=AuthResponse,
+    dependencies=[Depends(rate_limit("join", limit=10, window_s=900))],
+)
 async def join_household(
     body: JoinInput,
     db=Depends(db_dep),
@@ -134,39 +142,43 @@ async def join_household(
     if existing:
         raise HTTPException(status_code=409, detail="Email already registered")
 
-    # 3. Create the account with the language chosen on the landing page
-    # (NL/EN toggle, Dutch default)
+    # 3-5. Claim the invite and create the account as one unit. The claim is
+    # a conditional UPDATE so two people racing with one code cannot both
+    # join, and any failure rolls the whole join back (asyncpg autocommits,
+    # so db.commit() alone groups nothing).
     pw_hash = hash_password(body.password)
-    cur = await db.execute(
-        """INSERT INTO accounts
-           (household_id, email, name, password_hash, language, role)
-           VALUES (?, ?, ?, ?, ?, ?)""",
-        (household_id, body.email.lower(), body.name.strip(), pw_hash, body.language, invite_role),
-    )
-    account_id = cur.lastrowid
-
-    # 4. Create a user entry
     try:
-        await db.execute(
-            "INSERT INTO users (name, household_id, language, account_id) "
-            "VALUES (?, ?, ?, ?)",
-            (body.name.strip(), household_id, body.language, account_id),
-        )
-    except asyncpg.exceptions.UniqueViolationError:
-        # Roll back the account we just created
-        await db.execute("DELETE FROM accounts WHERE id = ?", (account_id,))
+        async with database_transaction(db):
+            claimed = await db.execute(
+                "UPDATE household_invites SET used_at = ? WHERE id = ? AND used_at IS NULL",
+                (now, invite["id"]),
+            )
+            if claimed.rowcount != 1:
+                raise HTTPException(status_code=410, detail="Invite code has already been used")
+
+            # Language chosen on the landing page (NL/EN toggle, Dutch default)
+            cur = await db.execute(
+                """INSERT INTO accounts
+                   (household_id, email, name, password_hash, language, role)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (household_id, body.email.lower(), body.name.strip(), pw_hash, body.language, invite_role),
+            )
+            account_id = cur.lastrowid
+
+            await db.execute(
+                "INSERT INTO users (name, household_id, language, account_id) "
+                "VALUES (?, ?, ?, ?)",
+                (body.name.strip(), household_id, body.language, account_id),
+            )
+    except asyncpg.exceptions.UniqueViolationError as exc:
+        # The email raced past the check above, or the name is taken in this
+        # household; the transaction already undid the account and the claim.
+        if "email" in str(exc).lower():
+            raise HTTPException(status_code=409, detail="Email already registered")
         raise HTTPException(
             status_code=409,
             detail="Deze gebruikersnaam is al in gebruik. Kies een andere naam.",
         )
-
-    # 5. Mark the invite as used
-    await db.execute(
-        "UPDATE household_invites SET used_at = ? WHERE id = ?",
-        (now, invite["id"]),
-    )
-
-    await db.commit()
 
     token = create_token(account_id=account_id, household_id=household_id)
     return AuthResponse(

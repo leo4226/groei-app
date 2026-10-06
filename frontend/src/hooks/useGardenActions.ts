@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { garden } from '../api/client'
 import type { GardenWaterStatus, GardenFertilizeStatus } from '../api/client'
+import { localIsoDate } from '../utils/dateFormat'
 
 interface GardenActionConfig<TStatus> {
   fetchStatus: () => Promise<TStatus>
@@ -10,7 +11,7 @@ interface GardenActionConfig<TStatus> {
 }
 
 export function getGardenActionDefaultDate(lastDoneAt: string | null | undefined, now = new Date()): string {
-  return lastDoneAt ?? now.toISOString().slice(0, 10)
+  return lastDoneAt ?? localIsoDate(now)
 }
 
 function useGardenAction<TStatus>(config: GardenActionConfig<TStatus>) {

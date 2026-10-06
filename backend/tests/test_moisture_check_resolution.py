@@ -28,8 +28,8 @@ async def _seed(db):
         [(2, "Other")],
     )
     await db.executemany(
-        "INSERT INTO users (id, name, household_id) VALUES (?, ?, ?)",
-        [(1, "Leon", 1), (2, "Other user", 2)],
+        "INSERT INTO users (id, name, household_id, account_id) VALUES (?, ?, ?, ?)",
+        [(1, "Leon", 1, 1), (2, "Other user", 2, None)],
     )
     await db.executemany(
         "INSERT INTO maps (id, name, map_type, household_id) VALUES (?, ?, ?, ?)",

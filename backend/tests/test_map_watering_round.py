@@ -45,10 +45,10 @@ async def _seed_round(db) -> None:
     await db.executescript(OPERATION_SCHEMA)
     await db.executescript("""
         INSERT INTO households (id, name) VALUES (2, 'Other Household');
-        INSERT INTO users (id, name, household_id) VALUES
-          (1, 'Leon', 1),
-          (2, 'Lisbeth', 1),
-          (3, 'Neighbour', 2);
+        INSERT INTO users (id, name, household_id, account_id) VALUES
+          (1, 'Leon', 1, 1),
+          (2, 'Lisbeth', 1, NULL),
+          (3, 'Neighbour', 2, NULL);
         INSERT INTO maps (id, name, map_type, household_id) VALUES
           (1, 'Back garden', 'outdoor', 1),
           (2, 'Living room', 'indoor', 1),
@@ -298,7 +298,6 @@ async def test_map_watering_round_rejects_mixed_map_selection_atomically(
         ([201, 201], 1),
         ([207], 1),
         ([205], 1),
-        ([201], 3),
     ],
 )
 @pytest.mark.asyncio
@@ -490,3 +489,30 @@ async def test_map_watering_round_undo_rejects_newer_schedule_mutation(
     assert refreshed.status_code == 200
     assert refreshed.json()['history'][0]['operation_id'] == operation_id
     assert refreshed.json()['history'][0]['can_undo'] is False
+
+
+@pytest.mark.asyncio
+async def test_map_watering_round_attributes_to_the_caller_not_the_request(
+    client,
+    seeded_db,
+    auth_header,
+):
+    """A user id in the body is ignored: the round is the signed-in account's.
+
+    The client used to pick the id from a device-local "active user" that
+    defaulted to the household's first member, so care got attributed to
+    whoever happened to be first. A foreign id must not land in the history.
+    """
+    await _seed_round(seeded_db)
+
+    response = await client.post(
+        '/api/care/maps/1/watering-round/complete',
+        json={'completed_at': '2026-07-23', 'user_id': 3, 'schedule_ids': [201]},
+        headers=auth_header,
+    )
+
+    assert response.status_code == 200, response.text
+    rows = await seeded_db.execute_fetchall(
+        "SELECT last_done_by FROM care_schedules WHERE id = 201"
+    )
+    assert rows[0]["last_done_by"] == 1

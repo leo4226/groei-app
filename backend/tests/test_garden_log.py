@@ -11,10 +11,12 @@ async def test_log_garden_water_updates_schedules_from_selected_watering_date():
     async with aiosqlite.connect(':memory:') as db:
         db.row_factory = aiosqlite.Row
         await db.executescript('''
+            CREATE TABLE maps (id INTEGER PRIMARY KEY, map_type TEXT);
             CREATE TABLE plants (
                 id INTEGER PRIMARY KEY,
                 is_active INTEGER DEFAULT 1,
-                household_id INTEGER
+                household_id INTEGER,
+                map_id INTEGER
             );
             CREATE TABLE care_schedules (
                 id INTEGER PRIMARY KEY,
@@ -23,6 +25,7 @@ async def test_log_garden_water_updates_schedules_from_selected_watering_date():
                 interval_days INTEGER,
                 season_adjust TEXT,
                 is_active INTEGER DEFAULT 1,
+                is_ephemeral INTEGER DEFAULT 0,
                 last_done DATE,
                 next_due DATE
             );
@@ -51,10 +54,12 @@ async def test_log_garden_fertilize_updates_schedules_from_selected_fertilizing_
     async with aiosqlite.connect(':memory:') as db:
         db.row_factory = aiosqlite.Row
         await db.executescript('''
+            CREATE TABLE maps (id INTEGER PRIMARY KEY, map_type TEXT);
             CREATE TABLE plants (
                 id INTEGER PRIMARY KEY,
                 is_active INTEGER DEFAULT 1,
-                household_id INTEGER
+                household_id INTEGER,
+                map_id INTEGER
             );
             CREATE TABLE care_schedules (
                 id INTEGER PRIMARY KEY,
@@ -63,6 +68,7 @@ async def test_log_garden_fertilize_updates_schedules_from_selected_fertilizing_
                 interval_days INTEGER,
                 season_adjust TEXT,
                 is_active INTEGER DEFAULT 1,
+                is_ephemeral INTEGER DEFAULT 0,
                 last_done DATE,
                 next_due DATE
             );
@@ -97,12 +103,17 @@ async def test_garden_water_log_is_household_scoped():
         db.row_factory = aiosqlite.Row
         await db.executescript('''
             CREATE TABLE households (id INTEGER PRIMARY KEY, name TEXT);
+            CREATE TABLE maps (id INTEGER PRIMARY KEY, map_type TEXT);
             CREATE TABLE plants (
-                id INTEGER PRIMARY KEY, is_active INTEGER DEFAULT 1, household_id INTEGER
+                id INTEGER PRIMARY KEY,
+                is_active INTEGER DEFAULT 1,
+                household_id INTEGER,
+                map_id INTEGER
             );
             CREATE TABLE care_schedules (
                 id INTEGER PRIMARY KEY, plant_id INTEGER, care_type TEXT,
                 interval_days INTEGER, season_adjust TEXT, is_active INTEGER DEFAULT 1,
+                is_ephemeral INTEGER DEFAULT 0,
                 last_done DATE, next_due DATE
             );
             CREATE TABLE garden_water_log (
@@ -132,12 +143,17 @@ async def test_garden_fertilize_log_is_household_scoped():
         db.row_factory = aiosqlite.Row
         await db.executescript('''
             CREATE TABLE households (id INTEGER PRIMARY KEY, name TEXT);
+            CREATE TABLE maps (id INTEGER PRIMARY KEY, map_type TEXT);
             CREATE TABLE plants (
-                id INTEGER PRIMARY KEY, is_active INTEGER DEFAULT 1, household_id INTEGER
+                id INTEGER PRIMARY KEY,
+                is_active INTEGER DEFAULT 1,
+                household_id INTEGER,
+                map_id INTEGER
             );
             CREATE TABLE care_schedules (
                 id INTEGER PRIMARY KEY, plant_id INTEGER, care_type TEXT,
                 interval_days INTEGER, season_adjust TEXT, is_active INTEGER DEFAULT 1,
+                is_ephemeral INTEGER DEFAULT 0,
                 last_done DATE, next_due DATE
             );
             CREATE TABLE garden_fertilize_log (
@@ -191,10 +207,17 @@ async def test_log_garden_water_scopes_schedules_to_household():
         db.row_factory = aiosqlite.Row
         await db.executescript('''
             CREATE TABLE households (id INTEGER PRIMARY KEY, name TEXT);
-            CREATE TABLE plants (id INTEGER PRIMARY KEY, is_active INTEGER DEFAULT 1, household_id INTEGER);
+            CREATE TABLE maps (id INTEGER PRIMARY KEY, map_type TEXT);
+            CREATE TABLE plants (
+                id INTEGER PRIMARY KEY,
+                is_active INTEGER DEFAULT 1,
+                household_id INTEGER,
+                map_id INTEGER
+            );
             CREATE TABLE care_schedules (
                 id INTEGER PRIMARY KEY, plant_id INTEGER, care_type TEXT,
                 interval_days INTEGER, season_adjust TEXT, is_active INTEGER DEFAULT 1,
+                is_ephemeral INTEGER DEFAULT 0,
                 last_done DATE, next_due DATE
             );
             CREATE TABLE garden_water_log (

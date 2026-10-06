@@ -59,8 +59,30 @@ interface FlorerStore {
 const STORAGE_KEY = 'floreren-active-user'
 
 function getSavedUserId(): number | null {
-  const saved = localStorage.getItem(STORAGE_KEY)
-  return saved ? parseInt(saved, 10) : null
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY)
+    return saved ? parseInt(saved, 10) : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * The signed-in account's own profile. The "active user" predates login: it
+ * was a device-local pick that defaulted to the household's *first* member, so
+ * a second member on a fresh device (or after logging in where someone else had
+ * been) saw and changed that person's language. The account decides now; the
+ * saved id only covers a legacy profile with no account link.
+ */
+export function resolveActiveUserId(
+  users: User[],
+  me: { id: number } | null,
+  savedId: number | null,
+): number | null {
+  const own = me ? users.find((user) => user.account_id === me.id) : undefined
+  if (own) return own.id
+  if (savedId !== null && users.some((user) => user.id === savedId)) return savedId
+  return users[0]?.id ?? null
 }
 
 
@@ -84,12 +106,17 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
   lastRefreshAt: 0,
 
   /** Called after login/register to force a fresh data load for the new account. */
-  resetForNewSession: () => set({
-    hasLoaded: false, isLoading: false, error: null,
-    plants: [], maps: [], users: [], locations: [],
-    recentLog: [], warningSummary: null, plantFact: null,
-    me: null,
-  }),
+  resetForNewSession: () => {
+    // Forget the previous person's profile too: someone else may be signing in
+    // on this device, and their own profile is resolved from the account.
+    try { localStorage.removeItem(STORAGE_KEY) } catch { /* private mode */ }
+    set({
+      hasLoaded: false, isLoading: false, error: null,
+      plants: [], maps: [], users: [], locations: [],
+      recentLog: [], warningSummary: null, plantFact: null,
+      me: null, activeUserId: null,
+    })
+  },
 
   load: async () => {
     set({ isLoading: true, error: null })
@@ -101,15 +128,10 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
         plantsApi.list(),
         authApi.me(),
       ])
-      const state: Partial<FlorerStore> = { users, locations, maps, plants, me, isLoading: false, hasLoaded: true, lastRefreshAt: Date.now() }
-      // Validate stored active user against loaded data — a stale
-      // localStorage entry from a different account/household causes
-      // every PATCH /users/:id/… to 404.
-      const savedId = get().activeUserId
-      const validId = savedId && users.some((u) => u.id === savedId) ? savedId : null
-      if (!validId && users.length > 0) {
-        state.activeUserId = users[0].id
-        localStorage.setItem(STORAGE_KEY, String(users[0].id))
+      const activeUserId = resolveActiveUserId(users, me, get().activeUserId)
+      const state: Partial<FlorerStore> = { users, locations, maps, plants, me, activeUserId, isLoading: false, hasLoaded: true, lastRefreshAt: Date.now() }
+      if (activeUserId !== null) {
+        try { localStorage.setItem(STORAGE_KEY, String(activeUserId)) } catch { /* private mode */ }
       }
       set(state)
     } catch (e) {
@@ -286,7 +308,7 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
   },
 
   setActiveUser: (id) => {
-    localStorage.setItem(STORAGE_KEY, String(id))
+    try { localStorage.setItem(STORAGE_KEY, String(id)) } catch { /* private mode */ }
     set({ activeUserId: id })
   },
 
