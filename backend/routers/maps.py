@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from datetime import date
 
 from database import db_dep
+from services.db_transactions import database_transaction
 from auth import get_current_account, require_editor
 from models import MapOut, MapDetailOut, MapPlantOut, MapObjectOut, MapItemsOut, MapCreate, MapUpdate, GardenSuggestionsOut, PlantRecommendationOut
 from services.environment import get_rain_data, get_temp_data
@@ -518,6 +519,54 @@ async def create_map(data: MapCreate, account = Depends(require_editor), db = De
     return dict(rows[0])
 
 
+async def _sync_soil_zones(db, map_id: int, zones: list) -> None:
+    """Mirror the canvas's soil zones into ground_zones (the canvas is the only
+    place they are drawn).
+
+    The upsert only ever touches a zone already on THIS map. Zone ids are
+    client-chosen and global, and public atlas pages list them, so an
+    unconditional ON CONFLICT DO UPDATE let anyone overwrite another garden's
+    zones by saving a canvas that reused their ids. Zones removed in the editor
+    are removed here too, instead of lingering with plants still assigned.
+    """
+    kept: list[str] = []
+    for z in zones:
+        if not isinstance(z, dict) or z.get("type") != "soil" or not z.get("id"):
+            continue
+        try:
+            x, y = float(z["x"]), float(z["y"])
+            w, h = float(z["width"]), float(z["height"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        polygon = json.dumps([[x, y], [x + w, y], [x + w, y + h], [x, y + h]])
+        zone_id = str(z["id"])
+        await db.execute(
+            """INSERT INTO ground_zones (id, map_id, name, zone_type, polygon, soil_note)
+               VALUES (?, ?, ?, 'soil', ?, ?)
+               ON CONFLICT (id) DO UPDATE SET
+                 name = EXCLUDED.name,
+                 polygon = EXCLUDED.polygon,
+                 zone_type = 'soil',
+                 soil_note = EXCLUDED.soil_note
+               WHERE ground_zones.map_id = EXCLUDED.map_id""",
+            (zone_id, map_id, z.get("label", "Grond"), polygon, z.get("soil_note")),
+        )
+        kept.append(zone_id)
+
+    stale = await db.execute_fetchall(
+        "SELECT id FROM ground_zones WHERE map_id = ? AND zone_type = 'soil'", (map_id,)
+    )
+    for row in stale:
+        if row["id"] in kept:
+            continue
+        await db.execute(
+            "UPDATE plants SET ground_zone_id = NULL WHERE ground_zone_id = ?", (row["id"],)
+        )
+        await db.execute(
+            "DELETE FROM ground_zones WHERE id = ? AND map_id = ?", (row["id"], map_id)
+        )
+
+
 @router.put("/maps/{map_id}", response_model=MapOut)
 async def update_map(map_id: int, data: MapUpdate, account = Depends(require_editor), db = Depends(db_dep)):
     existing = await db.execute_fetchall("SELECT id, slug, lat, lon, streek_source, place_name FROM maps WHERE id = ? AND household_id = ?", (map_id, account["household_id"]))
@@ -562,27 +611,11 @@ async def update_map(map_id: int, data: MapUpdate, account = Depends(require_edi
                 updates.append("svg_file = ?")
                 params.append(svg_url)
 
-            # Sync soil zones from canvas_data to ground_zones table
-            soil_zones = [z for z in zones if z.get("type") == "soil"]
-            for z in soil_zones:
-                polygon = json.dumps([
-                    [z["x"], z["y"]],
-                    [z["x"] + z["width"], z["y"]],
-                    [z["x"] + z["width"], z["y"] + z["height"]],
-                    [z["x"], z["y"] + z["height"]],
-                ])
-                await db.execute(
-                    """INSERT INTO ground_zones (id, map_id, name, zone_type, polygon, soil_note)
-                       VALUES (?, ?, ?, 'soil', ?, ?)
-                       ON CONFLICT (id) DO UPDATE SET
-                         name = EXCLUDED.name,
-                         polygon = EXCLUDED.polygon,
-                         zone_type = 'soil',
-                         soil_note = EXCLUDED.soil_note""",
-                    (z["id"], map_id, z.get("label", "Grond"), polygon, z.get("soil_note")),
-                )
-        except (json.JSONDecodeError, TypeError):
-            pass
+            await _sync_soil_zones(db, map_id, zones)
+        except (json.JSONDecodeError, TypeError, KeyError, ValueError):
+            # A malformed zone (missing x/width, …) must not turn a layout save
+            # into a 500; the canvas itself is still stored above.
+            logger.warning("Could not derive viewbox/soil zones for map %s", map_id)
         # Generate thumbnail SVG from zone blocks
         try:
             thumb_svg = render_thumbnail(data.canvas_data)
@@ -717,27 +750,52 @@ async def delete_map(map_id: int, account = Depends(require_editor), db = Depend
     if not existing:
         raise HTTPException(404, "Map not found")
 
-    # Cascade delete: PostgreSQL FK constraints require cleaning up child rows first.
-    # Plants stay alive — only map references are NULLed so they lose position on this map.
+    # One transaction. This used to run statement by statement in autocommit,
+    # so when the final DELETE hit a reference it did not clean up (any map
+    # ever used in a garden game), the map survived but its plants had already
+    # lost their positions and its zones and objects were gone.
+    async with database_transaction(db):
+        # 1. Plants stay alive; only their references to this map go, so they
+        #    lose their position on it.
+        await db.execute("UPDATE plants SET map_id = NULL WHERE map_id = ?", (map_id,))
+        await db.execute(
+            "UPDATE plants SET container_id = NULL WHERE container_id IN (SELECT id FROM objects WHERE map_id = ?)",
+            (map_id,),
+        )
+        await db.execute(
+            "UPDATE plants SET ground_zone_id = NULL WHERE ground_zone_id IN (SELECT id FROM ground_zones WHERE map_id = ?)",
+            (map_id,),
+        )
 
-    # 1. NULL plant references to this map and its child entities
-    await db.execute("UPDATE plants SET map_id = NULL WHERE map_id = $1", (map_id,))
-    await db.execute(
-        "UPDATE plants SET container_id = NULL WHERE container_id IN (SELECT id FROM objects WHERE map_id = $1)",
-        (map_id,),
-    )
-    await db.execute(
-        "UPDATE plants SET ground_zone_id = NULL WHERE ground_zone_id IN (SELECT id FROM ground_zones WHERE map_id = $1)",
-        (map_id,),
-    )
+        # 2. Child entities bound to this map, including the ones without a
+        #    foreign key that used to be left behind as orphans.
+        for table in (
+            "weed_sightings", "ground_zones", "zones", "objects",
+            "plant_placements", "garden_features", "dismissed_recommendations",
+        ):
+            await db.execute(f"DELETE FROM {table} WHERE map_id = ?", (map_id,))
 
-    # 2. Delete child entities bound to this map
-    await db.execute("DELETE FROM weed_sightings WHERE map_id = $1", (map_id,))
-    await db.execute("DELETE FROM ground_zones WHERE map_id = $1", (map_id,))
-    await db.execute("DELETE FROM zones WHERE map_id = $1", (map_id,))
-    await db.execute("DELETE FROM objects WHERE map_id = $1", (map_id,))
+        # 3. Garden games reference the map without a cascade. Round history
+        #    keeps its rows; a multi-map game moves to its next map; a game
+        #    that ran on this map alone cannot be played without it.
+        await db.execute("UPDATE game_rounds SET map_id = NULL WHERE map_id = ?", (map_id,))
+        await db.execute("DELETE FROM game_session_maps WHERE map_id = ?", (map_id,))
+        sessions = await db.execute_fetchall(
+            "SELECT id FROM game_sessions WHERE map_id = ?", (map_id,)
+        )
+        for session in sessions:
+            others = await db.execute_fetchall(
+                "SELECT map_id FROM game_session_maps WHERE session_id = ? ORDER BY map_id LIMIT 1",
+                (session["id"],),
+            )
+            if others:
+                await db.execute(
+                    "UPDATE game_sessions SET map_id = ? WHERE id = ?",
+                    (others[0]["map_id"], session["id"]),
+                )
+            else:
+                await db.execute("DELETE FROM game_sessions WHERE id = ?", (session["id"],))
 
-    # 3. Delete the map itself
-    await db.execute("DELETE FROM maps WHERE id = $1", (map_id,))
-    await db.commit()
+        # 4. The map itself
+        await db.execute("DELETE FROM maps WHERE id = ?", (map_id,))
     return {"ok": True}
