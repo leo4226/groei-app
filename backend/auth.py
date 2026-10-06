@@ -40,17 +40,22 @@ def capabilities_for_role(role: str) -> dict[str, bool]:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
 
 
-def create_token(account_id: int, household_id: int) -> str:
+def create_token(account_id: int, household_id: int, session_version: int = 0) -> str:
+    """`session_version` is the account's current one; a password change bumps
+    it, which retires every token issued before (see get_current_account)."""
     exp = datetime.now(timezone.utc) + timedelta(days=EXPIRE_DAYS)
     return jwt.encode(
-        {"sub": str(account_id), "household_id": household_id, "exp": exp},
+        {
+            "sub": str(account_id), "household_id": household_id,
+            "sv": session_version, "exp": exp,
+        },
         SECRET,
         algorithm=ALGORITHM,
     )
 
 
 def decode_token(token: str) -> dict:
-    """Returns {"account_id": int, "household_id": int} or raises JWTError.
+    """Returns {"account_id", "household_id", "session_version"} or raises JWTError.
 
     Game guest tokens are signed with the same secret but carry no account, so
     they are rejected here rather than crashing on the int() cast — a guest
@@ -61,6 +66,9 @@ def decode_token(token: str) -> dict:
         return {
             "account_id": int(payload["sub"]),
             "household_id": int(payload["household_id"]),
+            # Tokens from before migration 0079 carry no `sv`; 0 is the
+            # column default, so they stay valid until the next password change.
+            "session_version": int(payload.get("sv", 0)),
         }
     except (KeyError, TypeError, ValueError):
         raise JWTError("Not an account token")
@@ -74,7 +82,7 @@ async def get_current_account_from_token(token: str, db) -> dict:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
 
     rows = await db.execute_fetchall(
-        """SELECT a.id, a.household_id, a.role
+        """SELECT a.id, a.household_id, a.role, a.session_version
            FROM accounts a
            JOIN households h ON h.id = a.household_id
            WHERE a.id = ?""",
@@ -85,6 +93,10 @@ async def get_current_account_from_token(token: str, db) -> dict:
 
     account = dict(rows[0])
     if account["household_id"] != claims["household_id"]:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
+    # A password change since this token was issued: it belongs to a session
+    # the owner has ended (a lost phone, a shared laptop).
+    if (account.get("session_version") or 0) != claims["session_version"]:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
 
     return {

@@ -113,7 +113,8 @@ async def register(body: RegisterInput, db=Depends(db_dep)):
 )
 async def login(body: LoginInput, db=Depends(db_dep)):
     rows = await db.execute_fetchall(
-        "SELECT id, household_id, name, password_hash FROM accounts WHERE email = ?",
+        "SELECT id, household_id, name, password_hash, session_version "
+        "FROM accounts WHERE email = ?",
         (body.email.lower().strip(),),
     )
     if not rows:
@@ -124,7 +125,10 @@ async def login(body: LoginInput, db=Depends(db_dep)):
     if not verify_password(body.password, account["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
-    token = create_token(account_id=account["id"], household_id=account["household_id"])
+    token = create_token(
+        account_id=account["id"], household_id=account["household_id"],
+        session_version=account.get("session_version") or 0,
+    )
     return AuthResponse(
         token=token,
         account_id=account["id"],
@@ -214,8 +218,11 @@ async def reset_password(body: ResetPasswordInput, db=Depends(db_dep)):
             raise HTTPException(
                 status_code=400, detail={"code": "reset_link_invalid"}
             )
+        # Bumping the session version signs out every device: a reset is what
+        # you do when someone else may have your password.
         await db.execute(
-            "UPDATE accounts SET password_hash = ? WHERE id = ?",
+            "UPDATE accounts SET password_hash = ?, session_version = session_version + 1 "
+            "WHERE id = ?",
             (pw_hash, token_row["account_id"]),
         )
         # Any other link sent to this account is now moot; an older one in an
@@ -234,9 +241,12 @@ async def reset_password(body: ResetPasswordInput, db=Depends(db_dep)):
 
 @router.post("/change-password")
 async def change_password(body: ChangePasswordInput, current=Depends(require_editor), db=Depends(db_dep)):
-    """Change the current account's password. Requires current password verification."""
+    """Change the current account's password. Requires current password verification.
+
+    Every other session ends with it (the session version is bumped); this
+    device gets a fresh token in the response so it stays signed in."""
     rows = await db.execute_fetchall(
-        "SELECT id, password_hash FROM accounts WHERE id = ?",
+        "SELECT id, password_hash, session_version FROM accounts WHERE id = ?",
         (current["account_id"],)
     )
     if not rows:
@@ -249,13 +259,18 @@ async def change_password(body: ChangePasswordInput, current=Depends(require_edi
     if len(body.new_password) < 8:
         raise HTTPException(status_code=400, detail={"code": "password_too_short"})
 
-    pw_hash = hash_password(body.new_password)
+    pw_hash = await run_in_threadpool(hash_password, body.new_password)
+    session_version = (account.get("session_version") or 0) + 1
     await db.execute(
-        "UPDATE accounts SET password_hash = ? WHERE id = ?",
-        (pw_hash, current["account_id"])
+        "UPDATE accounts SET password_hash = ?, session_version = ? WHERE id = ?",
+        (pw_hash, session_version, current["account_id"])
     )
     await db.commit()
-    return {"message": "Password updated"}
+    token = create_token(
+        account_id=current["account_id"], household_id=current["household_id"],
+        session_version=session_version,
+    )
+    return {"message": "Password updated", "token": token}
 
 
 @router.get("/me", response_model=AccountOut)

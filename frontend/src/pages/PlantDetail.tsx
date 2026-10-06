@@ -784,7 +784,7 @@ export default function PlantDetail() {
               <span className="shrink-0 text-text-soft"><CareIcon type={entry.care_type as CareIconType} size={20} strokeWidth={1.8} /></span>
               <div className="flex-1 min-w-0">
                 <p className="text-sm">
-                  <span className="font-semibold">{entry.done_by_name}</span>
+                  <span className="font-semibold">{entry.done_by_name ?? t.plantDetail.formerMember}</span>
                   <span className="text-text-muted">
                     {entry.skipped ? ` ${t.plantDetail.skipped} ` : ` ${t.plantDetail.did} `}
                     {t.careTypes[entry.care_type as keyof typeof t.careTypes] ?? entry.care_type}

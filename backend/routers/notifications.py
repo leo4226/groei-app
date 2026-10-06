@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 from auth import get_current_account, require_editor
 from care_types import parse_muted_care_types
 from database import db_dep
+from services.db_transactions import database_transaction
 from services import email_template as tpl
 from services.digest import (
     APP_URL,
@@ -364,16 +365,31 @@ async def snooze_care_pushes(
     # the endpoint shares the dispatch's notion of "now").
     now = digest._now()
     until = snooze_until(kind, now)
-    await db.execute(
-        """
-        UPDATE care_schedules SET snoozed_until = ?
-        WHERE is_active = 1 AND next_due <= ?
-          AND plant_id IN (
-              SELECT id FROM plants WHERE household_id = ? AND is_active = 1
-          )
-        """,
-        (until, now.date(), household_id),
-    )
+    async with database_transaction(db):
+        await db.execute(
+            """
+            UPDATE care_schedules SET snoozed_until = ?
+            WHERE is_active = 1 AND next_due <= ?
+              AND plant_id IN (
+                  SELECT id FROM plants WHERE household_id = ? AND is_active = 1
+              )
+            """,
+            (until, now.date(), household_id),
+        )
+        # Forget who was told: when the snooze runs out, the whole household is
+        # reminded again, not just whoever had not been reached yet.
+        await db.execute(
+            """
+            DELETE FROM care_push_deliveries
+            WHERE schedule_id IN (
+                SELECT cs.id FROM care_schedules cs
+                JOIN plants p ON p.id = cs.plant_id
+                WHERE cs.is_active = 1 AND cs.next_due <= ?
+                  AND p.household_id = ? AND p.is_active = 1
+            )
+            """,
+            (now.date(), household_id),
+        )
     await db.commit()
     return {"ok": True, "for": kind, "snoozed_until": until.isoformat() + "Z"}
 

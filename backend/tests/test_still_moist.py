@@ -443,10 +443,10 @@ async def test_no_forecast_means_the_push_goes_out(monkeypatch):
 async def test_a_held_push_is_deferred_not_cancelled(monkeypatch):
     """The guarantee that makes this a hold rather than a mute.
 
-    `send_due_care_pushes` stamps `notified_for_due` on everything it delivers,
-    and a stamped schedule never pings again until completion moves its due
-    date. So a held row must reach neither the payload nor the stamp: if it were
-    stamped anyway, a wet Tuesday would cost you the reminder for the whole due
+    `send_due_care_pushes` records a delivery for everything it pushes, and a
+    recorded schedule never pings that account again until completion moves its
+    due date. So a held row must reach neither the payload nor the record: if it
+    were recorded anyway, a wet Tuesday would cost you the reminder for the whole due
     cycle, and the plant would go unwatered once it dried.
     """
     from services import digest
@@ -493,10 +493,9 @@ async def test_a_held_push_is_deferred_not_cancelled(monkeypatch):
     assert "Olijfboom" in body
     assert "Hortensia" not in body, "the wet plant is not in the notification"
 
-    stamped = [params for query, params in writes if "notified_for_due" in query]
-    assert stamped, "the delivered row is stamped"
-    assert all(params[-1] != wet["id"] for params in stamped), (
-        "the held row is never stamped, so it pings again once the soil dries")
+    recorded = [params for query, params in writes if "care_push_deliveries" in query]
+    assert [params[1] for params in recorded] == [dry["id"]], (
+        "only the delivered row is recorded; the held one pings again once the soil dries")
 
 
 def _noon(day):

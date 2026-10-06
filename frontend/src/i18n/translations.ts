@@ -746,6 +746,7 @@ export type Translations = {
     passwordMinLength: string
     passwordError: string
     passwordChanged: string
+    passwordSignedOutElsewhere: string  // shown after a password change
     icons: {
       title: string
       noChanges: string
@@ -998,6 +999,7 @@ export type Translations = {
     intervalSourceSpecies: string
     intervalSourceProvisional: string
     byPerson: string  // "by {name}"
+    formerMember: string  // care log author whose account was removed
     deleteSchedule: string
     markDone: string  // row action: log this care as done today
     lastDoneToday: string

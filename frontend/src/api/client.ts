@@ -1,6 +1,7 @@
 import type { User, Location, Plant, PlantCreateInput, CareScheduleInput, CareLogEntry, RecentLogEntry, MapInfo, MapDetail, MapPlant, MapObject, MapItems, SecondaryMarker, ObjectCreateInput, GroundZone, PlantIcon, IconSyncResult, IconGapReport, PlantAlert, AlertSummary, PlantFactOut, RecommendationsOut, GardenSuggestionsOut, PublicGardenSummary, PublicGardenDetail } from '../types'
 import { indexIconUrls } from '../utils/icons'
 import { withNetworkRetry } from './retry'
+import { saveToken } from './auth'
 
 const BASE = import.meta.env.VITE_API_BASE_URL || '/api'
 
@@ -761,8 +762,13 @@ export const weeds = {
 
 export const auth = {
   me: () => api<AccountMe>("GET", "/auth/me"),
-  changePassword: (data: { current_password: string; new_password: string }) =>
-    api<{ message: string }>("POST", "/auth/change-password", { body: data }),
+  /** A password change ends every other session; the response carries a fresh
+   * token for this device, which replaces the one that was just retired. */
+  changePassword: async (data: { current_password: string; new_password: string }) => {
+    const res = await api<{ message: string; token?: string }>("POST", "/auth/change-password", { body: data })
+    if (res.token) saveToken(res.token)
+    return res
+  },
 }
 
 export const dataExport = {

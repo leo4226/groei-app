@@ -220,3 +220,35 @@ async def test_plants_cannot_be_planted_into_another_households_map(
     assert rows[0]["map_id"] is None
     names = await household_db.execute_fetchall("SELECT name FROM plants ORDER BY id")
     assert [row["name"] for row in names] == ["Monstera"]
+
+
+@pytest.mark.asyncio
+async def test_removing_a_member_keeps_their_care_history_unattributed(
+    client, household_db, auth_header,
+):
+    """The care log used to be reassigned to whoever removed the member, so
+    Leon would appear to have done every watering Lisbeth ever did."""
+    await household_db.executescript("""
+        CREATE TABLE password_reset_tokens (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, account_id INTEGER,
+            token TEXT, expires_at TEXT, used_at TEXT
+        );
+        INSERT INTO care_log (plant_id, care_type, done_by, done_at)
+        VALUES (1, 'water', 2, '2026-06-01'), (1, 'water', 1, '2026-06-02');
+        INSERT INTO password_reset_tokens (account_id, token, expires_at)
+        VALUES (2, 'digest', '2026-06-03');
+    """)
+
+    response = await client.delete("/api/household/members/2", headers=auth_header)
+
+    assert response.status_code == 204, response.text
+    log = await household_db.execute_fetchall(
+        "SELECT done_by FROM care_log ORDER BY done_at"
+    )
+    assert [row["done_by"] for row in log] == [None, 1]
+    left = await household_db.execute_fetchall(
+        "SELECT (SELECT COUNT(*) FROM accounts WHERE id = 2) AS accounts, "
+        "(SELECT COUNT(*) FROM users WHERE id = 2) AS users, "
+        "(SELECT COUNT(*) FROM password_reset_tokens) AS tokens"
+    )
+    assert dict(left[0]) == {"accounts": 0, "users": 0, "tokens": 0}

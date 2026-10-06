@@ -117,6 +117,8 @@ def _digest_hour(value) -> int:
 
 
 def _as_date(value) -> date | None:
+    if isinstance(value, datetime):
+        return value.date()
     if value is None or isinstance(value, date):
         return value
     return date.fromisoformat(str(value)[:10])
@@ -488,8 +490,8 @@ async def hold_still_moist_water_rows(db, household_id: int, due_rows: list[dict
     same `assess_moisture` the warning pipeline uses, so the two agree by
     construction.
 
-    Held, not cancelled: a dropped row is never stamped with `notified_for_due`,
-    so it stays eligible and pings on the first run after the soil dries. The
+    Held, not cancelled: a dropped row is never recorded as delivered, so it
+    stays eligible and pings on the first run after the soil dries. The
     only thing that changes is which day the phone buzzes.
     """
     from services.warnings import _as_watering_date
@@ -575,15 +577,29 @@ async def _hold_still_moist_digest_rows(db, household_id: int, rows, today: date
         return shaped
 
 
+async def _delivered_due_dates(db, account_id: int, schedule_ids: list[int]) -> dict[int, date]:
+    """schedule id -> the due date this account was last pushed about."""
+    if not schedule_ids:
+        return {}
+    placeholders = ", ".join("?" for _ in schedule_ids)
+    rows = await db.execute_fetchall(
+        f"SELECT schedule_id, notified_for_due FROM care_push_deliveries "
+        f"WHERE account_id = ? AND schedule_id IN ({placeholders})",
+        (account_id, *schedule_ids),
+    )
+    return {row["schedule_id"]: _as_date(row["notified_for_due"]) for row in rows}
+
+
 async def send_due_care_pushes(db) -> dict:
     """Push a reminder the moment a care task becomes due, once per due cycle.
 
     Runs every (hourly) cron call. For every account that has at least one push
     subscription, finds active schedules that are due (next_due <= today) and
-    not yet notified for their current due date, sends one batched push, and
-    stamps `notified_for_due` so the same task never re-pings until it's
-    completed and falls due again. Held during each account's quiet hours, and
-    care types the account has muted are skipped.
+    not yet notified to *that account* for their current due date, sends one
+    batched push, and records the delivery in `care_push_deliveries` so the
+    same task never re-pings that account until it's completed and falls due
+    again. Held during each account's quiet hours, and care types the account
+    has muted are skipped.
 
     Delivery is driven by the *subscriptions* themselves, not an account-wide
     flag — subscriptions are per-device, so unsubscribing one device never
@@ -602,10 +618,11 @@ async def send_due_care_pushes(db) -> dict:
         LEFT JOIN notification_preferences np ON np.account_id = ps.account_id
         """
     )
-    # Grouped per household. `notified_for_due` lives on the schedule, which
-    # the whole household shares, so it may only be stamped once every member
-    # has had their chance: stamping after the first member's push used to
-    # leave every other member of the household with nothing.
+    # Grouped per household so the due tasks (and the soil check) are worked
+    # out once. Delivery is recorded per account: it used to be one stamp on
+    # the shared schedule, so whoever was reached first settled it for the
+    # whole household, and a member still in their quiet hours, or whose phone
+    # was unreachable that run, never heard about the task (migration 0081).
     households: dict[int, list[dict]] = {}
     for acc in accounts:
         households.setdefault(acc["household_id"], []).append(dict(acc))
@@ -632,8 +649,6 @@ async def send_due_care_pushes(db) -> dict:
             WHERE cs.is_active = 1 AND p.is_active = 1 AND p.household_id = ?
               AND cs.next_due <= ?
               AND (cs.snoozed_until IS NULL OR cs.snoozed_until <= ?)
-              AND (cs.notified_for_due IS NULL OR cs.notified_for_due <> cs.next_due
-                   OR cs.snoozed_until IS NOT NULL)
             ORDER BY cs.next_due ASC
             """,
             (household_id, today, now_utc),
@@ -658,14 +673,16 @@ async def send_due_care_pushes(db) -> dict:
         if not due_rows:
             continue
 
-        # Schedules some member was actually told about this run.
-        delivered_schedules: dict[int, dict] = {}
+        schedule_ids = [row["id"] for row in due_rows]
         for acc in awake:
+            already_told = await _delivered_due_dates(db, acc["account_id"], schedule_ids)
             # Skip care types this member has muted.
             muted = set(parse_muted_care_types(acc["muted_care_types"]))
             account_rows = []
             for row in due_rows:
                 if row["care_type"] in muted:
+                    continue
+                if already_told.get(row["id"]) == _as_date(row["next_due"]):
                     continue
                 metadata = weather_task_metadata(row.get("notes"))
                 if metadata:
@@ -720,23 +737,19 @@ async def send_due_care_pushes(db) -> dict:
                         severity=metadata["severity"],
                     )
                 else:
-                    delivered_schedules[row["id"]] = row
-            await db.commit()
-
-        # Stamp each delivered schedule with the due date it was notified for,
-        # so it won't re-ping until completion advances next_due. Only after a
-        # real delivery — a transient failure stays eligible next run.
-        for row in delivered_schedules.values():
-            due = row["next_due"]
-            if isinstance(due, str):
-                due = date.fromisoformat(due[:10])
-            # Clear any (now-elapsed) snooze as we re-notify, so the same due
-            # cycle doesn't immediately re-ping on the next run.
-            await db.execute(
-                "UPDATE care_schedules SET notified_for_due = ?, snoozed_until = NULL WHERE id = ?",
-                (due, row["id"]),
-            )
-        if delivered_schedules:
+                    # Only after a real delivery: a member whose push failed
+                    # stays eligible next run, whatever the others got.
+                    await db.execute(
+                        """
+                        INSERT INTO care_push_deliveries
+                            (account_id, schedule_id, notified_for_due, notified_at)
+                        VALUES (?, ?, ?, ?)
+                        ON CONFLICT (account_id, schedule_id) DO UPDATE
+                        SET notified_for_due = excluded.notified_for_due,
+                            notified_at = excluded.notified_at
+                        """,
+                        (acc["account_id"], row["id"], _as_date(row["next_due"]), now_utc),
+                    )
             await db.commit()
 
     return {"push_checked": push_checked, "push_sent": push_sent,

@@ -61,6 +61,7 @@ def qm_to_pg(sql: str) -> str:
 #: Regenerate after adding a table:
 #:   grep -A20 'CREATE TABLE' alembic/versions/*.py   # any without an `id` column
 _TABLES_WITHOUT_ID = frozenset({
+    "care_push_deliveries",
     "care_rhythm_operation_members",
     "game_session_maps",
     "garden_care_operation_members",

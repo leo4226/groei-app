@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from database import db_dep
 from services.calendar_feed_cache import forget_account_feeds
+from services.account_deletion import delete_account, delete_user_profile
 from services.db_transactions import database_transaction
 from services.rate_limit import rate_limit
 from models import (
@@ -407,30 +408,14 @@ async def remove_member(
     account_to_delete = target_user["account_id"]
 
     async with database_transaction(db):
-        # 4) Clean up FK references → reassign NOT NULL columns, NULL others
-        await db.execute(
-            "UPDATE care_log SET done_by = ? WHERE done_by = ?",
-            (current_user_id, user_id),
-        )
-        await db.execute(
-            "UPDATE care_schedules SET last_done_by = NULL WHERE last_done_by = ?",
-            (user_id,),
-        )
-        await db.execute(
-            "UPDATE garden_water_log SET watered_by = NULL WHERE watered_by = ?",
-            (user_id,),
-        )
-        await db.execute(
-            "UPDATE garden_fertilize_log SET fertilized_by = NULL WHERE fertilized_by = ?",
-            (user_id,),
-        )
-
-        # 5) Delete user
-        await db.execute("DELETE FROM users WHERE id = ?", (user_id,))
-
-        # 6) Delete account if it exists
+        # 4) The member's care history stays, without their name. This used to
+        # hand their whole care log to whoever removed them (done_by was NOT
+        # NULL until migration 0080), and skipped their reset links, invites
+        # and games, any of which made the delete fail.
         if account_to_delete:
-            await db.execute("DELETE FROM accounts WHERE id = ?", (account_to_delete,))
+            await delete_account(db, account_to_delete)
+        else:
+            await delete_user_profile(db, user_id)
 
     if account_to_delete:
         forget_account_feeds(account_to_delete)

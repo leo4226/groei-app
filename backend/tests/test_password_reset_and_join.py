@@ -186,3 +186,67 @@ async def test_reset_link_carries_the_email_language_and_errors_are_codes(client
     )
     assert bogus.json()["detail"] == {"code": "reset_link_invalid"}
     assert short.json()["detail"] == {"code": "password_too_short"}
+
+
+@pytest.mark.asyncio
+async def test_reset_signs_out_every_existing_session(client, reset_db):
+    _, sent = reset_db
+    login = await client.post(
+        "/api/auth/login", json={"email": "leon@example.com", "password": "old-password"},
+    )
+    stolen = {"Authorization": f"Bearer {login.json()['token']}"}
+    assert (await client.get("/api/auth/me", headers=stolen)).status_code == 200
+
+    await client.post("/api/auth/forgot-password", json={"email": "leon@example.com"})
+    reset = await client.post(
+        "/api/auth/reset-password",
+        json={"token": _token_from(sent[0]), "new_password": "new-password-1"},
+    )
+    assert reset.status_code == 200
+
+    assert (await client.get("/api/auth/me", headers=stolen)).status_code == 401
+    fresh = await client.post(
+        "/api/auth/login", json={"email": "leon@example.com", "password": "new-password-1"},
+    )
+    me = await client.get(
+        "/api/auth/me", headers={"Authorization": f"Bearer {fresh.json()['token']}"},
+    )
+    assert me.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_change_password_keeps_this_device_and_ends_the_others(client, reset_db):
+    tokens = [
+        (await client.post(
+            "/api/auth/login",
+            json={"email": "leon@example.com", "password": "old-password"},
+        )).json()["token"]
+        for _ in range(2)
+    ]
+    phone, laptop = ({"Authorization": f"Bearer {t}"} for t in tokens)
+
+    changed = await client.post(
+        "/api/auth/change-password",
+        json={"current_password": "old-password", "new_password": "new-password-1"},
+        headers=phone,
+    )
+
+    assert changed.status_code == 200, changed.text
+    renewed = {"Authorization": f"Bearer {changed.json()['token']}"}
+    assert (await client.get("/api/auth/me", headers=renewed)).status_code == 200
+    assert (await client.get("/api/auth/me", headers=laptop)).status_code == 401
+    assert (await client.get("/api/auth/me", headers=phone)).status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_tokens_from_before_session_versions_still_work(client, reset_db):
+    from datetime import timezone
+    from jose import jwt
+    from auth import ALGORITHM, SECRET
+
+    legacy = jwt.encode(
+        {"sub": "1", "household_id": 1, "exp": datetime.now(timezone.utc) + timedelta(days=1)},
+        SECRET, algorithm=ALGORITHM,
+    )
+    me = await client.get("/api/auth/me", headers={"Authorization": f"Bearer {legacy}"})
+    assert me.status_code == 200

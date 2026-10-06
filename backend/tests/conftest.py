@@ -53,6 +53,7 @@ SCHEMA = """
         is_admin INTEGER NOT NULL DEFAULT 0,
         language TEXT DEFAULT 'nl',
         role TEXT NOT NULL DEFAULT 'editor' CHECK (role IN ('owner', 'editor', 'viewer')),
+        session_version INTEGER NOT NULL DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
     CREATE UNIQUE INDEX uq_accounts_owner_per_household
@@ -135,6 +136,13 @@ SCHEMA = """
         rhythm_opt_out INTEGER DEFAULT 0,
         rhythm_operation_id INTEGER,
         interval_source TEXT NOT NULL DEFAULT 'manual'
+    );
+    CREATE TABLE care_push_deliveries (
+        account_id INTEGER NOT NULL,
+        schedule_id INTEGER NOT NULL,
+        notified_for_due DATE NOT NULL,
+        notified_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (account_id, schedule_id)
     );
     CREATE TABLE users (
         id INTEGER PRIMARY KEY,
