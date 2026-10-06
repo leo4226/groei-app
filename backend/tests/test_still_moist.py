@@ -672,3 +672,20 @@ def test_a_plant_whose_own_map_has_no_forecast_gets_no_one_elses():
 
     water = [w for w in state.warnings if w.care_type == "water"]
     assert water[0].code is None, "still a real watering warning"
+
+
+@pytest.mark.asyncio
+async def test_the_digest_email_holds_a_still_moist_watering_too(monkeypatch):
+    """The email follows the push and the plant page; the shared SELECT names
+    its columns schedule_id/last_done_at, which the hold must still read."""
+    from services.digest import _hold_still_moist_digest_rows
+
+    _patch_forecast(monkeypatch, WET_WEEK)
+    digest_row = _due_row(1)
+    digest_row["schedule_id"] = digest_row.pop("id")
+    digest_row["last_done_at"] = digest_row.pop("last_done")
+    fertilize = {**digest_row, "schedule_id": 2, "care_type": "fertilize"}
+
+    kept = await _hold_still_moist_digest_rows(_ForecastDb(), 1, [digest_row, fertilize], TODAY)
+
+    assert [row["schedule_id"] for row in kept] == [2]

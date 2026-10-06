@@ -668,3 +668,119 @@ async def test_test_push_prunes_gone_subscription(
     assert res.json()["result"] == "all_gone"
     rows = await seeded_db.execute_fetchall("SELECT id FROM push_subscriptions")
     assert rows == []
+
+
+async def test_every_household_member_gets_the_care_push(
+    client, seeded_db, cron_secret, sent_pushes, at_digest_hour, auth_header
+):
+    """The due-cycle stamp is per schedule, which the household shares. Stamping
+    after the first member's push used to leave every other member with
+    nothing: Lisbeth never heard about a watering because Leon had."""
+    await _seed_overdue_plant(seeded_db)
+    await seeded_db.execute(
+        "INSERT INTO accounts (id, household_id, email, name, password_hash, role) "
+        "VALUES (2, 1, 'lisbeth@example.com', 'Lisbeth', 'x', 'editor')"
+    )
+    await _enable_push(seeded_db, account_id=1)
+    await _enable_push(seeded_db, account_id=2)
+    await client.post("/api/push/subscription", json=SUB, headers=auth_header)
+    await seeded_db.execute(
+        "INSERT INTO push_subscriptions (account_id, endpoint, p256dh, auth) "
+        "VALUES (2, 'https://push.example/lisbeth', 'k', 'a')"
+    )
+    await seeded_db.commit()
+
+    res = await client.post("/api/internal/send-digests", headers=cron_secret)
+
+    assert res.json()["push_sent"] == 2
+    assert sorted(push["endpoint"] for push in sent_pushes) == [
+        "https://push.example/abc123", "https://push.example/lisbeth",
+    ]
+    # Then the cycle is spent for both: no second round of pings.
+    again = await client.post("/api/internal/send-digests", headers=cron_secret)
+    assert again.json()["push_sent"] == 0
+
+
+async def test_a_member_who_muted_watering_does_not_cost_the_other_one_the_push(
+    client, seeded_db, cron_secret, sent_pushes, at_digest_hour, auth_header
+):
+    await _seed_overdue_plant(seeded_db)
+    await seeded_db.execute(
+        "INSERT INTO accounts (id, household_id, email, name, password_hash, role) "
+        "VALUES (2, 1, 'lisbeth@example.com', 'Lisbeth', 'x', 'editor')"
+    )
+    await _enable_push(seeded_db, account_id=1)
+    await _enable_push(seeded_db, account_id=2)
+    await seeded_db.execute(
+        "UPDATE notification_preferences SET muted_care_types = 'water' WHERE account_id = 1"
+    )
+    await client.post("/api/push/subscription", json=SUB, headers=auth_header)
+    await seeded_db.execute(
+        "INSERT INTO push_subscriptions (account_id, endpoint, p256dh, auth) "
+        "VALUES (2, 'https://push.example/lisbeth', 'k', 'a')"
+    )
+    await seeded_db.commit()
+
+    await client.post("/api/internal/send-digests", headers=cron_secret)
+
+    assert [push["endpoint"] for push in sent_pushes] == ["https://push.example/lisbeth"]
+
+
+@pytest.mark.parametrize("endpoint", [
+    "http://fcm.googleapis.com/fcm/send/x",
+    "https://169.254.169.254/latest",
+    "https://[fdaa::3]/x",
+    "https://floreren-api.internal:8000/admin",
+    "https://localhost/x",
+    "https://intranet/x",
+])
+async def test_push_endpoint_must_be_a_public_https_host(
+    client, seeded_db, auth_header, endpoint,
+):
+    res = await client.post(
+        "/api/push/subscription",
+        json={"endpoint": endpoint, "keys": SUB["keys"]},
+        headers=auth_header,
+    )
+    assert res.status_code == 422
+    rows = await seeded_db.execute_fetchall("SELECT id FROM push_subscriptions")
+    assert rows == []
+
+
+async def test_real_push_services_are_accepted(client, seeded_db, auth_header):
+    for endpoint in (
+        "https://fcm.googleapis.com/fcm/send/abc",
+        "https://web.push.apple.com/QGv",
+        "https://updates.push.services.mozilla.com/wpush/v2/x",
+        "https://wns2-par02p.notify.windows.com/w/?token=x",
+    ):
+        res = await client.post(
+            "/api/push/subscription",
+            json={"endpoint": endpoint, "keys": SUB["keys"]},
+            headers=auth_header,
+        )
+        assert res.status_code == 200, endpoint
+
+
+def test_send_push_lets_the_service_hold_the_message_and_never_hangs(monkeypatch):
+    """ttl=0 (pywebpush's default) drops a push for any phone not reachable at
+    that instant; no timeout let one stalled service hold up the run."""
+    import pywebpush
+    from services import push
+
+    captured = {}
+
+    def fake_webpush(**kwargs):
+        captured.update(kwargs)
+
+    monkeypatch.setenv("VAPID_PRIVATE_KEY", "test-key")
+    monkeypatch.setattr(pywebpush, "webpush", fake_webpush)
+
+    outcome = push.send_push(
+        {"endpoint": "https://fcm.googleapis.com/x", "p256dh": "k", "auth": "a"},
+        {"title": "Water"},
+    )
+
+    assert outcome == "ok"
+    assert captured["ttl"] >= 3600
+    assert captured["timeout"] is not None
