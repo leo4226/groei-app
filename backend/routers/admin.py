@@ -13,6 +13,7 @@ import logging
 logger = logging.getLogger(__name__)
 from services.admin_audit import log_admin_action
 from services.calendar_feed_cache import forget_account_feeds
+from services.db_transactions import database_transaction
 
 # Every /admin/* route requires the admin account — never add an unprotected route here.
 router = APIRouter(tags=["admin"], dependencies=[Depends(require_admin)])
@@ -294,16 +295,17 @@ async def bulk_delete_accounts(
         missing = [i for i in ids if i not in found]
         raise HTTPException(404, f"Accounts not found: {missing}")
 
-    for t in targets:
-        await _delete_account(db, dict(t))
-
-    # Households only disappear once their last account is gone.
+    # One unit: a failure halfway used to leave accounts half-deleted
+    # (asyncpg autocommits each statement).
     households_cleared = 0
-    for hid in {t["household_id"] for t in targets}:
-        if await _delete_household_if_empty(db, hid):
-            households_cleared += 1
+    async with database_transaction(db):
+        for t in targets:
+            await _delete_account(db, dict(t))
 
-    await db.commit()
+        # Households only disappear once their last account is gone.
+        for hid in {t["household_id"] for t in targets}:
+            if await _delete_household_if_empty(db, hid):
+                households_cleared += 1
     for t in targets:
         forget_account_feeds(t["id"])
 
@@ -325,9 +327,9 @@ async def delete_account(account_id: int, account = Depends(get_current_account)
 
     target_row = dict(target[0])
     household_id = target_row["household_id"]
-    await _delete_account(db, target_row)
-    household_deleted = await _delete_household_if_empty(db, household_id)
-    await db.commit()
+    async with database_transaction(db):
+        await _delete_account(db, target_row)
+        household_deleted = await _delete_household_if_empty(db, household_id)
     forget_account_feeds(account_id)
 
     result = {"status": "deleted", "account_id": account_id, "name": target_row["name"], "household_deleted": household_deleted}

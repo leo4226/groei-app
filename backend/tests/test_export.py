@@ -181,3 +181,18 @@ async def test_export_care_log_csv_is_scoped_to_household(client, export_db, aut
     assert 'own' in text
     assert 'Foreign fern' not in text
     assert 'foreign' not in text
+
+
+def test_csv_cells_that_would_run_as_formulas_stay_text():
+    from routers.export import _csv_cell
+
+    assert _csv_cell("=HYPERLINK(\"http://x\")") == "'=HYPERLINK(\"http://x\")"
+    assert _csv_cell("@cmd") == "'@cmd"
+    assert _csv_cell("Monstera") == "Monstera"
+    assert _csv_cell(5) == 5
+
+
+@pytest.mark.asyncio
+async def test_care_log_csv_opens_as_utf8_in_excel(client, export_db, auth_header):
+    res = await client.get('/api/export/care-log.csv', headers=auth_header)
+    assert res.content.startswith(b"\xef\xbb\xbf")
