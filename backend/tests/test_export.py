@@ -73,6 +73,7 @@ EXTRA_SCHEMA = """
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         fertilized_at DATE NOT NULL,
         fertilized_by INTEGER,
+        household_id INTEGER,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -128,12 +129,13 @@ async def export_db(seeded_db):
         INSERT INTO care_log (id, plant_id, care_type, done_by, done_at, notes)
         VALUES (1, 1, 'water', 1, '2026-06-10T10:00:00', 'own'),
                (2, 2, 'water', 2, '2026-06-10T10:00:00', 'foreign');
-        INSERT INTO garden_water_log (id, watered_at, watered_by, water_amount)
-        VALUES (1, '2026-06-10', 1, 5.5),
-               (2, '2026-06-10', 2, 99.9);
-        INSERT INTO garden_fertilize_log (id, fertilized_at, fertilized_by)
-        VALUES (1, '2026-06-01', 1),
-               (2, '2026-06-01', 2);
+        INSERT INTO garden_water_log (id, watered_at, watered_by, water_amount, household_id)
+        VALUES (1, '2026-06-10', 1, 5.5, 1),
+               (2, '2026-06-10', 2, 99.9, 2),
+               (3, '2026-06-09', NULL, 4.0, 1);
+        INSERT INTO garden_fertilize_log (id, fertilized_at, fertilized_by, household_id)
+        VALUES (1, '2026-06-01', 1, 1),
+               (2, '2026-06-01', 2, 2);
         INSERT INTO plant_photos (id, plant_id, household_id, r2_key, url, note)
         VALUES (1, 1, 1, 'photos/1/1/a.jpg', 'https://cdn.test/a.jpg', 'own'),
                (2, 2, 2, 'photos/2/2/b.jpg', 'https://cdn.test/b.jpg', 'foreign');
@@ -161,7 +163,9 @@ async def test_export_json_is_scoped_to_household(client, export_db, auth_header
     assert [o['name'] for o in body['objects']] == ['Terracotta pot']
     assert [z['name'] for z in body['ground_zones']] == ['Border']
     assert [c['notes'] for c in body['care_log']] == ['own']
-    assert [w['water_amount'] for w in body['garden_water_log']] == [5.5]
+    # Row 3 was watered by a member since removed: kept, just without a name.
+    assert [w['water_amount'] for w in body['garden_water_log']] == [5.5, 4.0]
+    assert body['garden_water_log'][1]['watered_by_name'] is None
     assert [f['fertilized_by_name'] for f in body['garden_fertilize_log']] == ['Leon']
     assert [p['note'] for p in body['plant_photos']] == ['own']
 

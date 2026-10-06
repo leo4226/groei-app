@@ -21,10 +21,16 @@ async def _ensure_care_log(db):
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             plant_id INTEGER NOT NULL,
             care_type TEXT NOT NULL,
-            done_by INTEGER NOT NULL,
+            done_by INTEGER,
             done_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             notes TEXT,
             skipped BOOLEAN DEFAULT FALSE
+        )""")
+    # Removing a member deletes their reset links too.
+    await db.execute("""
+        CREATE TABLE IF NOT EXISTS password_reset_tokens (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, account_id INTEGER,
+            token TEXT, expires_at TEXT, used_at TEXT
         )""")
 
 
@@ -149,10 +155,11 @@ class TestRemoveMember:
         assert len(await seeded_db.execute_fetchall("SELECT id FROM users WHERE id = 10")) == 1
 
     @pytest.mark.asyncio
-    async def test_care_history_is_reassigned_not_orphaned(
+    async def test_care_history_stays_but_is_not_pinned_on_the_remover(
         self, client, seeded_db, auth_header
     ):
-        """care_log.done_by is NOT NULL, so it must be moved, not nulled."""
+        """It used to be moved to whoever removed the member (done_by was NOT
+        NULL until migration 0080), crediting them with work they never did."""
         await _add_user(seeded_db, 10, "Test", account_id=1)
         await _add_account(seeded_db, 2, "Lisbeth", "lis@example.com")
         await _add_user(seeded_db, 11, "Lisbeth", account_id=2)
@@ -166,7 +173,7 @@ class TestRemoveMember:
         assert resp.status_code == 204, resp.text
 
         log = await seeded_db.execute_fetchall("SELECT done_by FROM care_log WHERE id = 1")
-        assert log[0]["done_by"] == 10, "history should move to the remaining member"
+        assert log[0]["done_by"] is None, "the record stays, without a name"
 
     @pytest.mark.asyncio
     async def test_cannot_remove_yourself(self, client, seeded_db, auth_header):

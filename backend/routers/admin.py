@@ -11,6 +11,7 @@ from routers.plants import _seed_care_schedules
 from services.icon_catalog import load_catalog
 import logging
 logger = logging.getLogger(__name__)
+from services.account_deletion import delete_account as delete_account_rows
 from services.admin_audit import log_admin_action
 from services.calendar_feed_cache import forget_account_feeds
 from services.db_transactions import database_transaction
@@ -340,32 +341,7 @@ async def delete_account(account_id: int, account = Depends(get_current_account)
 async def _delete_account(db, target: dict):
     """Delete one account and everything owned by it personally — but NOT the
     household's shared data. target: {id, household_id, name}."""
-    await _cascade_delete_account_links(db, target["id"], target["household_id"])
-    await _delete_users_for_account(db, target["id"])
-    await db.execute("DELETE FROM accounts WHERE id = ?", (target["id"],))
-
-
-async def _delete_users_for_account(db, account_id: int):
-    """Delete the account's `users` row, after NULL-ing what points at it.
-
-    Keyed on `users.account_id` — the real foreign key added by migration 0073.
-    This used to match on (name, household_id), the last surviving instance of
-    the name-based bridge that migration retired, and it was the worst place for
-    it: an unlinked `users` row that merely shared the name was deleted along
-    with the account (taking its care attribution with it), while a row whose
-    name had drifted from the account's was left behind as an orphan.
-    """
-    rows = await db.execute_fetchall(
-        "SELECT id FROM users WHERE account_id = ?",
-        (account_id,),
-    )
-    for row in rows:
-        user_id = row["id"]
-        await db.execute("UPDATE care_log SET done_by = NULL WHERE done_by = ?", (user_id,))
-        await db.execute("UPDATE care_schedules SET last_done_by = NULL WHERE last_done_by = ?", (user_id,))
-        await db.execute("UPDATE garden_water_log SET watered_by = NULL WHERE watered_by = ?", (user_id,))
-        await db.execute("UPDATE garden_fertilize_log SET fertilized_by = NULL WHERE fertilized_by = ?", (user_id,))
-        await db.execute("DELETE FROM users WHERE id = ?", (user_id,))
+    await delete_account_rows(db, target["id"])
 
 
 async def _delete_household_if_empty(db, household_id: int) -> bool:
@@ -435,11 +411,3 @@ async def _cascade_delete_household(db, household_id: int):
     await db.execute("DELETE FROM users WHERE household_id = ?", (household_id,))
     await db.execute("DELETE FROM locations WHERE household_id = ?", (household_id,))
     await db.execute("DELETE FROM maps WHERE household_id = ?", (household_id,))
-
-
-async def _cascade_delete_account_links(db, account_id: int, household_id: int):
-    """Delete records linked directly to an account (FK → accounts). Touches only
-    this account's rows — shared household data is handled by the household cascade."""
-    await db.execute("DELETE FROM password_reset_tokens WHERE account_id = ?", (account_id,))
-    await db.execute("DELETE FROM plantnet_quota WHERE account_id = ?", (account_id,))
-    await db.execute("DELETE FROM household_invites WHERE created_by = ?", (account_id,))

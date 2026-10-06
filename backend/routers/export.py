@@ -198,8 +198,8 @@ async def export_household_data(
             SELECT gwl.id, gwl.watered_at, gwl.watered_by,
                    u.name AS watered_by_name, gwl.water_amount, gwl.created_at
             FROM garden_water_log gwl
-            JOIN users u ON gwl.watered_by = u.id
-            WHERE u.household_id = ?
+            LEFT JOIN users u ON gwl.watered_by = u.id
+            WHERE gwl.household_id = ?
             ORDER BY gwl.watered_at DESC, gwl.id DESC
             """,
             (household_id,),
@@ -210,8 +210,8 @@ async def export_household_data(
             SELECT gfl.id, gfl.fertilized_at, gfl.fertilized_by,
                    u.name AS fertilized_by_name, gfl.created_at
             FROM garden_fertilize_log gfl
-            JOIN users u ON gfl.fertilized_by = u.id
-            WHERE u.household_id = ?
+            LEFT JOIN users u ON gfl.fertilized_by = u.id
+            WHERE gfl.household_id = ?
             ORDER BY gfl.fertilized_at DESC, gfl.id DESC
             """,
             (household_id,),

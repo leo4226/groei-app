@@ -182,11 +182,12 @@ async def test_push_sent_to_opted_in_account(
     # A single-plant push leads with the plant name as the title (#889).
     assert "Monstera" in sent_pushes[0]["payload"]["title"]
 
-    # The due schedule is stamped with its due date so it won't re-ping until
-    # completion advances next_due.
+    # The delivery is recorded for this account with the due date it was
+    # about, so it won't re-ping them until completion advances next_due.
     row = (await seeded_db.execute_fetchall(
-        "SELECT notified_for_due FROM care_schedules WHERE plant_id = 10"
+        "SELECT account_id, notified_for_due FROM care_push_deliveries"
     ))[0]
+    assert row["account_id"] == 1
     assert str(row["notified_for_due"])[:10] == "2026-06-09"
 
 
@@ -600,11 +601,9 @@ async def test_snooze_suppresses_then_renotifies(
     monkeypatch.setattr(digest, "_now", lambda: datetime(2026, 6, 11, 11, 0, tzinfo=AMS))
     await client.post("/api/internal/send-digests", headers=cron_secret)
     assert len(sent_pushes) == 2
-    # …and the snooze is cleared so it doesn't loop
-    row = (await seeded_db.execute_fetchall(
-        "SELECT snoozed_until FROM care_schedules WHERE plant_id = 10"
-    ))[0]
-    assert row["snoozed_until"] is None
+    # …and the new delivery record stops it looping
+    await client.post("/api/internal/send-digests", headers=cron_secret)
+    assert len(sent_pushes) == 2
 
 
 # ── manual test-push endpoint (#295) ─────────────────────────────────────
@@ -805,3 +804,71 @@ def test_send_push_refuses_a_stored_endpoint_that_is_not_a_push_service(monkeypa
 
     assert outcome == "error"
     assert calls == []
+
+
+async def test_a_member_in_quiet_hours_still_hears_about_the_task_later(
+    client, seeded_db, cron_secret, sent_pushes, at_digest_hour, auth_header, monkeypatch,
+):
+    """Delivery used to be one stamp on the shared schedule, so the member who
+    woke up first settled the task for the whole household."""
+    import services.digest as digest
+
+    await _seed_overdue_plant(seeded_db)
+    await seeded_db.executescript("""
+        INSERT INTO accounts (id, household_id, email, name, password_hash, role, language)
+        VALUES (2, 1, 'lisbeth@example.com', 'Lisbeth', 'x', 'editor', 'nl');
+        INSERT INTO push_subscriptions (account_id, endpoint, p256dh, auth)
+        VALUES (2, 'https://fcm.googleapis.com/fcm/send/lisbeth', 'k', 'a');
+        -- Lisbeth sleeps in until 10:00; it is 08:30.
+        INSERT INTO notification_preferences (account_id, quiet_start, quiet_end)
+        VALUES (2, '22:00', '10:00');
+    """)
+    await client.post("/api/push/subscription", json=SUB, headers=auth_header)
+
+    await client.post("/api/internal/send-digests", headers=cron_secret)
+    assert [p["endpoint"] for p in sent_pushes] == [SUB["endpoint"]]
+
+    monkeypatch.setattr(digest, "_now", lambda: datetime(2026, 6, 11, 10, 30, tzinfo=AMS))
+    await client.post("/api/internal/send-digests", headers=cron_secret)
+    assert [p["endpoint"] for p in sent_pushes] == [
+        SUB["endpoint"], "https://fcm.googleapis.com/fcm/send/lisbeth",
+    ]
+
+    # Both have had it now; nobody is pinged twice.
+    await client.post("/api/internal/send-digests", headers=cron_secret)
+    assert len(sent_pushes) == 2
+
+
+async def test_a_failed_push_to_one_member_is_retried_for_that_member_only(
+    client, seeded_db, cron_secret, at_digest_hour, auth_header, monkeypatch,
+):
+    import services.digest as digest
+
+    await _seed_overdue_plant(seeded_db)
+    await seeded_db.executescript("""
+        INSERT INTO accounts (id, household_id, email, name, password_hash, role, language)
+        VALUES (2, 1, 'lisbeth@example.com', 'Lisbeth', 'x', 'editor', 'nl');
+        INSERT INTO push_subscriptions (account_id, endpoint, p256dh, auth)
+        VALUES (2, 'https://fcm.googleapis.com/fcm/send/lisbeth', 'k', 'a');
+    """)
+    await client.post("/api/push/subscription", json=SUB, headers=auth_header)
+
+    attempts: list[str] = []
+    phone_offline = {"lisbeth": True}
+
+    def flaky_send(subscription, payload):
+        attempts.append(subscription["endpoint"])
+        if subscription["endpoint"].endswith("lisbeth") and phone_offline["lisbeth"]:
+            return "error"
+        return "ok"
+
+    monkeypatch.setattr(digest, "send_push", flaky_send)
+
+    await client.post("/api/internal/send-digests", headers=cron_secret)
+    assert sorted(attempts) == sorted([SUB["endpoint"], "https://fcm.googleapis.com/fcm/send/lisbeth"])
+
+    attempts.clear()
+    phone_offline["lisbeth"] = False
+    await client.post("/api/internal/send-digests", headers=cron_secret)
+    # Leon already has it; only Lisbeth's missed push is tried again.
+    assert attempts == ["https://fcm.googleapis.com/fcm/send/lisbeth"]

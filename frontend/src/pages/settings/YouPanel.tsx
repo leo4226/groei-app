@@ -108,7 +108,7 @@ export default function YouPanel({ me, theme, onThemeChange, onProfileSaved }: P
       setChanged(true)
       setCurrentPassword('')
       setNewPassword('')
-      setTimeout(() => { setChanged(false); setShowPassword(false) }, 2000)
+      setTimeout(() => { setChanged(false); setShowPassword(false) }, 4000)
     } catch {
       setPasswordError(t.settings.passwordError)
     } finally {
@@ -286,6 +286,7 @@ export default function YouPanel({ me, theme, onThemeChange, onProfileSaved }: P
               ) : changed ? t.settings.passwordChanged : t.settings.changePassword}
             </button>
             {passwordError && <p className="text-sm text-fiery-red">{passwordError}</p>}
+            {changed && <p className="text-sm text-text-muted">{t.settings.passwordSignedOutElsewhere}</p>}
           </div>
         )}
       </div>

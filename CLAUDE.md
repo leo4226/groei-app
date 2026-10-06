@@ -118,6 +118,10 @@ Indoor maps only need a name and dimensions.
 
 JWT-based auth (`jose` library, `sub=account_id`). Accounts belong to one Household. Leon's garden: Amsterdam, 52.3715°N 4.8499°E.
 
+- **Sessions end on a password change.** Tokens carry the account's `session_version` (claim `sv`, absent = 0); a reset or change bumps it and every older token gets 401. `/auth/change-password` returns a fresh token for the device that made the change.
+- **Deleting an account keeps the household's history.** Since migration 0080 every FK to `users`/`accounts` has a delete rule: history (`care_log.done_by`, garden logs, …) is set NULL and shown as "former member"; per-account rows (reset links, invites, games) cascade. Use `services/account_deletion.py`.
+- **Care pushes are tracked per account** in `care_push_deliveries` (migration 0081), not on the shared schedule: each member is told once per due date, whatever the others got. `care_schedules.notified_for_due` is no longer used by the dispatch.
+
 ## Languages (NL/EN)
 
 The app is fully bilingual Dutch/English; `accounts.language` ('nl'|'en') drives the UI. Rules for **every** user-facing feature (2026-07 language audit — a big NL/EN-mixing cleanup — is the origin of all of these):

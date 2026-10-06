@@ -55,6 +55,7 @@ def _db_cache():
                 is_admin INTEGER NOT NULL DEFAULT 0,
                 language TEXT DEFAULT 'nl',
                 role TEXT NOT NULL DEFAULT 'editor' CHECK (role IN ('owner', 'editor', 'viewer')),
+                session_version INTEGER NOT NULL DEFAULT 0,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             );
             CREATE UNIQUE INDEX uq_accounts_owner_per_household
