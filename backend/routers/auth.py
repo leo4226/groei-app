@@ -31,7 +31,7 @@ from auth import (
 )
 from services.db_transactions import database_transaction
 from services.email import send_password_reset
-from services.rate_limit import rate_limit
+from services.rate_limit import account_rate_limit, rate_limit
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
@@ -239,7 +239,12 @@ async def reset_password(body: ResetPasswordInput, db=Depends(db_dep)):
 
 
 
-@router.post("/change-password")
+@router.post(
+    "/change-password",
+    # A stolen session must not be able to guess the current password and,
+    # by changing it, sign the real owner out everywhere.
+    dependencies=[Depends(account_rate_limit("change-password", limit=5, window_s=900))],
+)
 async def change_password(body: ChangePasswordInput, current=Depends(require_editor), db=Depends(db_dep)):
     """Change the current account's password. Requires current password verification.
 
