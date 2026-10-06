@@ -1,4 +1,5 @@
 import json
+import math
 from datetime import date, timedelta
 from services.local_time import local_today
 
@@ -33,7 +34,10 @@ def get_season_multiplier(season_adjust: str | None, d: date | None = None) -> f
     # Stored JSON is free-form: a null, a string or a non-positive number for
     # this season must not turn completing care into a 500.
     value = adjustments.get(get_current_season(d), 1.0)
-    if isinstance(value, bool) or not isinstance(value, (int, float)) or value <= 0:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return 1.0
+    # json.loads accepts NaN, Infinity and 1e999, which then crash round().
+    if not math.isfinite(value) or value <= 0:
         return 1.0
     return float(value)
 

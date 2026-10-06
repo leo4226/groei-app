@@ -469,7 +469,7 @@ async def test_a_held_push_is_deferred_not_cancelled(monkeypatch):
                 return [{"id": 1, "map_type": "outdoor",
                          "lat": 52.3715, "lon": 4.8499}]
             if "FROM push_subscriptions WHERE" in query:
-                return [{"id": 7, "endpoint": "https://push.example/x",
+                return [{"id": 7, "endpoint": "https://fcm.googleapis.com/fcm/send/x",
                          "p256dh": "k", "auth": "a"}]
             return []
 

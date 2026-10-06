@@ -59,7 +59,7 @@ async def test_save_discovery_uploads_captured_photo_data(client, discoveries_db
 
     storage = FakeStorage()
     monkeypatch.setattr(discoveries, "_get_storage", lambda: storage)
-    payload = base64.b64encode(b"fake jpg").decode("ascii")
+    payload = base64.b64encode(b"\xff\xd8\xff\xe0fake jpg").decode("ascii")
 
     res = await client.post(
         "/api/discover",
@@ -76,7 +76,7 @@ async def test_save_discovery_uploads_captured_photo_data(client, discoveries_db
     body = res.json()
     assert body["thumbnail_url"].startswith("https://cdn.test/field-journal/")
     assert storage.puts == [
-        (storage.puts[0][0], b"fake jpg", "image/jpeg"),
+        (storage.puts[0][0], b"\xff\xd8\xff\xe0fake jpg", "image/jpeg"),
     ]
 
     list_res = await client.get("/api/discover", headers=auth_header)

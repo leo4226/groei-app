@@ -8,6 +8,7 @@ from database import db_dep
 from auth import get_current_account, require_editor
 from models import WeedSightingCreate, WeedSightingOut
 from services.storage import build_storage_from_env, Storage
+from services.uploads import decode_image_data_url, extension_for, storage_key
 
 router = APIRouter(tags=["weed-sightings"])
 
@@ -77,18 +78,6 @@ def _get_storage() -> Storage | None:
         return build_storage_from_env()
     except Exception:
         logger.warning("Storage init failed for weed sightings")
-        return None
-
-
-def _decode_photo_data(photo_data: str) -> bytes | None:
-    if not photo_data:
-        return None
-    if "," in photo_data:
-        photo_data = photo_data.split(",", 1)[1]
-    try:
-        return base64.b64decode(photo_data)
-    except Exception:
-        logger.warning("Failed to decode weed sighting photo data")
         return None
 
 
@@ -177,11 +166,12 @@ async def create_sighting(body: WeedSightingCreate, db=Depends(db_dep), account=
     photo_url = None
     if body.photo_data:
         storage = _get_storage()
-        decoded = _decode_photo_data(body.photo_data)
+        decoded = decode_image_data_url(body.photo_data)
         if decoded and storage:
+            data, content_type = decoded
             try:
-                key = f"field-observations/{int(time.time() * 1000)}.jpg"
-                photo_url = storage.put(key, decoded, "image/jpeg")
+                key = storage_key("field-observations", extension_for(content_type))
+                photo_url = storage.put(key, data, content_type)
             except Exception:
                 logger.warning("Weed sighting photo upload failed")
     cursor = await db.execute(

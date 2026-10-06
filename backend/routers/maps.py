@@ -23,6 +23,7 @@ from services.streek import streek_for, all_streken
 from services.bees import bee_support_for_map
 from services.geocode import reverse_geocode
 from services.local_time import local_today
+from services.uploads import storage_key
 
 logger = logging.getLogger(__name__)
 
@@ -576,6 +577,7 @@ async def update_map(map_id: int, data: MapUpdate, account = Depends(require_edi
 
     updates = []
     params = []
+    zones_to_sync: list | None = None
     if data.name is not None:
         updates.append("name = ?")
         params.append(data.name)
@@ -611,12 +613,14 @@ async def update_map(map_id: int, data: MapUpdate, account = Depends(require_edi
                 updates.append("svg_file = ?")
                 params.append(svg_url)
 
-            await _sync_soil_zones(db, map_id, zones)
+            # Synced below, in the same transaction as the canvas itself.
+            zones_to_sync = zones
         except (json.JSONDecodeError, TypeError, KeyError, ValueError):
             # A malformed zone (missing x/width, …) must not turn a layout save
             # into a 500; the canvas itself is still stored above.
             logger.warning("Could not derive viewbox/soil zones for map %s", map_id)
-        # Generate thumbnail SVG from zone blocks
+        # Generate thumbnail SVG from zone blocks. A thumbnail is decoration:
+        # a malformed zone or a storage hiccup must not fail the layout save.
         try:
             thumb_svg = render_thumbnail(data.canvas_data)
             if thumb_svg:
@@ -628,8 +632,8 @@ async def update_map(map_id: int, data: MapUpdate, account = Depends(require_edi
             else:
                 updates.append("thumbnail_file = ?")
                 params.append(None)
-        except (json.JSONDecodeError, TypeError):
-            pass
+        except Exception:
+            logger.warning("Thumbnail render failed for map %s", map_id, exc_info=True)
     if data.map_type is not None:
         updates.append("map_type = ?")
         params.append(data.map_type)
@@ -687,10 +691,14 @@ async def update_map(map_id: int, data: MapUpdate, account = Depends(require_edi
         updates.append("streek_source = ?")
         params.append("auto")
 
-    if updates:
-        params.append(map_id)
-        await db.execute(f"UPDATE maps SET {', '.join(updates)} WHERE id = ?", params)
-        await db.commit()
+    # The soil-zone sync deletes zones and unassigns plants, so it commits
+    # together with the canvas it was derived from, or not at all.
+    async with database_transaction(db):
+        if zones_to_sync is not None:
+            await _sync_soil_zones(db, map_id, zones_to_sync)
+        if updates:
+            params.append(map_id)
+            await db.execute(f"UPDATE maps SET {', '.join(updates)} WHERE id = ?", params)
 
     rows = await db.execute_fetchall(
         "SELECT id, name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data, map_type, lat, lon, bearing, thumbnail_file, streek_slug, streek_source, is_public, photos_public, place_name, country_code FROM maps WHERE id = ?",
@@ -738,7 +746,7 @@ async def upload_map_underlay(
         raise HTTPException(413, "Image too large")
 
     slug = rows[0]["slug"]
-    key = f"maps/{slug}/underlay-{int(time.time())}.{ext}"
+    key = storage_key(f"maps/{slug}/underlay", ext)
     storage = build_storage_from_env()
     url = storage.put(key, data, content_type=file.content_type)
     return {"url": url}

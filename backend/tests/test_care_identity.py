@@ -184,7 +184,10 @@ def test_season_multiplier_ignores_malformed_adjustments():
     from services.scheduling import calculate_effective_interval
 
     summer = date(2026, 7, 1)
-    for raw in ('{"summer": null}', '{"summer": "fast"}', '{"summer": -1}', '[0.5]', '"x"'):
+    for raw in (
+        '{"summer": null}', '{"summer": "fast"}', '{"summer": -1}', '[0.5]', '"x"',
+        '{"summer": NaN}', '{"summer": Infinity}', '{"summer": 1e999}',
+    ):
         assert calculate_effective_interval(10, raw, summer) == 10, raw
     assert calculate_effective_interval(10, '{"summer": 0.5}', summer) == 5
 

@@ -8,10 +8,9 @@
 """
 import asyncio
 import html
-import ipaddress
 import os
 import secrets
-from urllib.parse import quote, urlparse
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from fastapi.responses import HTMLResponse
@@ -145,27 +144,21 @@ class PushKeys(BaseModel):
     auth: str
 
 
-_INTERNAL_HOST_SUFFIXES = (".internal", ".local", ".localhost", ".flycast", ".lan")
-
-
 def _validate_push_endpoint(value: str) -> str:
-    """A push endpoint is a public https URL run by a browser vendor.
+    """A push endpoint must be an https URL on a known browser push service.
 
     The server POSTs to whatever is stored here on every care push, so an
-    arbitrary URL turned the dispatcher into a request proxy aimed wherever a
-    client liked — Fly's private .internal network included.
+    arbitrary URL made the dispatcher a request proxy aimed wherever a client
+    liked — Fly's private .internal network included. A denylist of internal
+    names was not enough: a public host can resolve to a private address or
+    redirect there, so only the push services browsers actually use pass.
     """
-    parsed = urlparse((value or "").strip())
-    host = (parsed.hostname or "").lower().rstrip(".")
-    if parsed.scheme != "https" or not host:
-        raise ValueError("push endpoint must be an https URL")
-    if host == "localhost" or host.endswith(_INTERNAL_HOST_SUFFIXES) or "." not in host:
-        raise ValueError("push endpoint must be a public host")
-    try:
-        ipaddress.ip_address(host.strip("[]"))
-    except ValueError:
-        return value.strip()
-    raise ValueError("push endpoint must be a hostname, not an IP address")
+    from services.push import is_known_push_endpoint
+
+    cleaned = (value or "").strip()
+    if not is_known_push_endpoint(cleaned):
+        raise ValueError("push endpoint must be a browser push service URL")
+    return cleaned
 
 
 class PushSubscriptionIn(BaseModel):

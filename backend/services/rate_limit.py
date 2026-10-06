@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import time
 
-from fastapi import HTTPException, Request, status
+from fastapi import Depends, HTTPException, Request, status
 
 # key ("bucket:ip") -> ascending list of request timestamps inside the window
 _hits: dict[str, list[float]] = {}
@@ -59,6 +59,32 @@ def rate_limit(bucket: str, limit: int, window_s: int):
         now = time.time()
         _gc(now)
         key = f"{bucket}:{_client_ip(request)}"
+        window = [t for t in _hits.get(key, ()) if now - t < window_s]
+        if len(window) >= limit:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail={"code": "rate_limited"},
+                headers={"Retry-After": str(window_s)},
+            )
+        window.append(now)
+        _hits[key] = window
+
+    return _dependency
+
+
+def account_rate_limit(bucket: str, limit: int, window_s: int):
+    """Like `rate_limit`, but keyed by the signed-in account instead of the IP.
+
+    For signed-in endpoints that spend money or reach outside the app (LLM
+    calls, GitHub issues): signup is open, so an account is cheap, and an IP
+    limit alone would not stop one account from looping.
+    """
+    from auth import get_current_account
+
+    async def _dependency(account=Depends(get_current_account)) -> None:
+        now = time.time()
+        _gc(now)
+        key = f"{bucket}:account:{account['account_id']}"
         window = [t for t in _hits.get(key, ()) if now - t < window_s]
         if len(window) >= limit:
             raise HTTPException(

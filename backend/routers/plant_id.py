@@ -28,6 +28,7 @@ from services.plant_id import identify, PlantIdQuotaExceeded, PlantIdServiceErro
 # bioclip_id is lazily imported in _bioclip_identify (local fallback branch)
 # to avoid requiring numpy/scipy/torch on Fly.io (which uses remote worker)
 from services.storage import build_storage_from_env
+from services.uploads import decode_image_data_url, extension_for, sniff_image_type, storage_key
 
 logger = logging.getLogger(__name__)
 
@@ -990,9 +991,13 @@ async def _enrich_species_if_missing(db, scientific_name: str) -> int | None:
 
 
 def _save_identify_photo(image_bytes: bytes) -> str:
-    key = f"photos/identify_{int(time.time())}.jpg"
+    # The key used to be `identify_<unix seconds>.jpg`, shared by every user:
+    # two identifications committed in the same second overwrote each other,
+    # and the first plant then showed the second person's photo.
+    content_type = sniff_image_type(image_bytes) or "image/jpeg"
+    key = storage_key("photos/identify", extension_for(content_type))
     storage = build_storage_from_env()
-    return storage.put(key, image_bytes, content_type="image/jpeg")
+    return storage.put(key, image_bytes, content_type=content_type)
 
 
 async def _capture_confirmed_embedding(
@@ -1103,13 +1108,13 @@ async def identify_commit(
     thresholds_raw = row["care_thresholds"]
     thresholds = json.loads(thresholds_raw) if thresholds_raw else {}
 
-    try:
-        image_bytes = base64.b64decode(_strip_data_url(body.photo_base64))
-    except Exception:
+    decoded = decode_image_data_url(body.photo_base64)
+    if decoded is None:
         raise HTTPException(
             status_code=400,
             detail=_msg(lang, nl="Onbekend afbeeldingsformaat", en="Unknown image format"),
         )
+    image_bytes = decoded[0]
     # boto3 is synchronous — run the R2 upload in a worker thread so it can't
     # block the event loop (a single stalled upload used to freeze every
     # concurrent request on this one small machine).
