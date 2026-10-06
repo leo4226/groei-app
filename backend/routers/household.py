@@ -408,32 +408,32 @@ async def remove_member(
     # 3) The account to delete comes straight off the row, no name lookup.
     account_to_delete = target_user["account_id"]
 
-    # 4) Clean up FK references → reassign NOT NULL columns, NULL others
-    await db.execute(
-        "UPDATE care_log SET done_by = ? WHERE done_by = ?",
-        (current_user_id, user_id),
-    )
-    await db.execute(
-        "UPDATE care_schedules SET last_done_by = NULL WHERE last_done_by = ?",
-        (user_id,),
-    )
-    await db.execute(
-        "UPDATE garden_water_log SET watered_by = NULL WHERE watered_by = ?",
-        (user_id,),
-    )
-    await db.execute(
-        "UPDATE garden_fertilize_log SET fertilized_by = NULL WHERE fertilized_by = ?",
-        (user_id,),
-    )
+    async with database_transaction(db):
+        # 4) Clean up FK references → reassign NOT NULL columns, NULL others
+        await db.execute(
+            "UPDATE care_log SET done_by = ? WHERE done_by = ?",
+            (current_user_id, user_id),
+        )
+        await db.execute(
+            "UPDATE care_schedules SET last_done_by = NULL WHERE last_done_by = ?",
+            (user_id,),
+        )
+        await db.execute(
+            "UPDATE garden_water_log SET watered_by = NULL WHERE watered_by = ?",
+            (user_id,),
+        )
+        await db.execute(
+            "UPDATE garden_fertilize_log SET fertilized_by = NULL WHERE fertilized_by = ?",
+            (user_id,),
+        )
 
-    # 5) Delete user
-    await db.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        # 5) Delete user
+        await db.execute("DELETE FROM users WHERE id = ?", (user_id,))
 
-    # 6) Delete account if it exists
-    if account_to_delete:
-        await db.execute("DELETE FROM accounts WHERE id = ?", (account_to_delete,))
+        # 6) Delete account if it exists
+        if account_to_delete:
+            await db.execute("DELETE FROM accounts WHERE id = ?", (account_to_delete,))
 
-    await db.commit()
     if account_to_delete:
         forget_account_feeds(account_to_delete)
 

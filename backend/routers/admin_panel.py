@@ -1656,6 +1656,54 @@ class SpeciesMergeRequest(BaseModel):
     target_id: int
 
 
+async def _repoint_species(db, source_id: int, target_id: int) -> None:
+    """Move everything that names the source species onto the target, then
+    delete the source — in one transaction.
+
+    Merging used to repoint only plants and then delete the source in
+    autocommit. Its foreign keys did the rest: users' confirmed identification
+    photos (ON DELETE CASCADE) were thrown away, field-journal finds and
+    streek lists lost their species (SET NULL), and photo verdicts, dismissed
+    recommendations and identify telemetry were left pointing at nothing.
+    Catalog images may still cascade: the target has its own and they can be
+    fetched again.
+    """
+    from services.db_transactions import database_transaction
+
+    async with database_transaction(db):
+        await db.execute(
+            "UPDATE plants SET species_id = ?, updated_at = CURRENT_TIMESTAMP WHERE species_id = ?",
+            (target_id, source_id),
+        )
+        for table, column in (
+            ("user_confirmed_embeddings", "species_id"),
+            ("plant_discoveries", "species_id"),
+            ("streek_species", "species_id"),
+            ("plant_photos", "bioclip_species_id"),
+            ("identify_log", "top_species_id"),
+            ("identify_log", "chosen_species_id"),
+        ):
+            await db.execute(
+                f"UPDATE {table} SET {column} = ? WHERE {column} = ?",
+                (target_id, source_id),
+            )
+        # UNIQUE (map_id, species_id): drop a source dismissal the map already
+        # holds for the target before moving the rest.
+        await db.execute(
+            """DELETE FROM dismissed_recommendations
+               WHERE species_id = ?
+                 AND map_id IN (
+                   SELECT map_id FROM dismissed_recommendations WHERE species_id = ?
+                 )""",
+            (source_id, target_id),
+        )
+        await db.execute(
+            "UPDATE dismissed_recommendations SET species_id = ? WHERE species_id = ?",
+            (target_id, source_id),
+        )
+        await db.execute("DELETE FROM plant_species WHERE id = ?", (source_id,))
+
+
 @router.post("/admin-panel/species/merge")
 async def admin_merge_species(
     body: SpeciesMergeRequest,
@@ -1685,12 +1733,7 @@ async def admin_merge_species(
     )
     moved = plant_rows[0]["n"]
 
-    await db.execute(
-        "UPDATE plants SET species_id = ?, updated_at = CURRENT_TIMESTAMP WHERE species_id = ?",
-        (body.target_id, body.source_id),
-    )
-    await db.execute("DELETE FROM plant_species WHERE id = ?", (body.source_id,))
-    await db.commit()
+    await _repoint_species(db, body.source_id, body.target_id)
 
     result = {
         "merged": True,

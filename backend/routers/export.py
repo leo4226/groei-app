@@ -234,6 +234,14 @@ async def export_household_data(
     return bundle
 
 
+def _csv_cell(value: Any) -> Any:
+    """Text that a spreadsheet would run as a formula (a plant called
+    `=HYPERLINK(...)`, a note starting with `@`) is prefixed so it stays text."""
+    if isinstance(value, str) and value[:1] in ("=", "+", "-", "@", "\t", "\r"):
+        return "'" + value
+    return value
+
+
 @router.get("/export/care-log.csv")
 async def export_care_log_csv(
     account=Depends(get_current_account),
@@ -258,11 +266,13 @@ async def export_care_log_csv(
     writer = csv.DictWriter(output, fieldnames=columns)
     writer.writeheader()
     for row in rows:
-        writer.writerow({key: row.get(key) for key in columns})
+        writer.writerow({key: _csv_cell(row.get(key)) for key in columns})
 
     filename = f"floreren-care-log-{local_today().isoformat()}.csv"
     return Response(
-        content=output.getvalue(),
+        # The BOM makes Excel read UTF-8 (it otherwise assumes ANSI and garbles
+        # every accented plant name).
+        content="\ufeff" + output.getvalue(),
         media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
