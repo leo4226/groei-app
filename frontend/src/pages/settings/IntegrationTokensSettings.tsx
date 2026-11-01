@@ -3,6 +3,7 @@ import {
   integrations,
   type IntegrationToken,
   type IntegrationTokenCreated,
+  type IntegrationTokenScope,
 } from '../../api/client'
 import { useT } from '../../context/LanguageContext'
 import { isoToDisplay } from '../../utils/dateFormat'
@@ -15,6 +16,9 @@ const SECONDARY_BUTTON_CLASS = 'inline-flex min-h-11 items-center justify-center
  * GET /api/integrations/snapshot. The raw token is shown once, right after it
  * is made; the list only shows its last four characters.
  *
+ * A token is 'read' (snapshot + map thumbnails) or 'care' (also marks care
+ * done, as this account). The scope is fixed when the token is made.
+ *
  * Making or revoking one needs editor rights (like the calendar feed link);
  * a viewer sees the section read-only.
  */
@@ -23,6 +27,7 @@ export default function IntegrationTokensSettings({ canEdit = true }: { canEdit?
   const [tokens, setTokens] = useState<IntegrationToken[]>([])
   const [loading, setLoading] = useState(true)
   const [name, setName] = useState('LAveren')
+  const [allowCare, setAllowCare] = useState(false)
   const [created, setCreated] = useState<IntegrationTokenCreated | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<'limit' | 'action' | null>(null)
@@ -43,7 +48,8 @@ export default function IntegrationTokensSettings({ canEdit = true }: { canEdit?
     setError(null)
     setCopied(null)
     try {
-      const result = await integrations.create(name.trim())
+      const scope: IntegrationTokenScope = allowCare ? 'care' : 'read'
+      const result = await integrations.create(name.trim(), scope)
       setCreated(result)
       setTokens((current) => [result, ...current])
     } catch (e) {
@@ -105,6 +111,20 @@ export default function IntegrationTokensSettings({ canEdit = true }: { canEdit?
         </button>
       </div>
 
+      <label className="mt-2 flex min-h-11 cursor-pointer items-start gap-3 rounded-2xl border border-border bg-paper p-3">
+        <input
+          type="checkbox"
+          className="mt-0.5 h-4 w-4 accent-primary"
+          checked={allowCare}
+          disabled={!canEdit}
+          onChange={(event) => setAllowCare(event.target.checked)}
+        />
+        <span>
+          <span className="block text-sm font-semibold text-text">{t.settings.integrationsAllowCare}</span>
+          <span className="mt-0.5 block text-xs leading-relaxed text-text-muted">{t.settings.integrationsAllowCareDescription}</span>
+        </span>
+      </label>
+
       {created && (
         <div className="mt-3 rounded-2xl border border-primary/25 bg-primary/10 p-3" data-integration-token-created>
           <p className="text-xs font-semibold text-primary">{t.settings.integrationsSaveNow}</p>
@@ -141,6 +161,11 @@ export default function IntegrationTokensSettings({ canEdit = true }: { canEdit?
               <div className="min-w-0">
                 <div className="truncate text-sm font-semibold text-text">
                   {token.name} <span className="font-mono text-xs font-normal text-text-muted">…{token.token_hint}</span>
+                  <span className={`ml-2 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                    token.scope === 'care' ? 'bg-amber-500/15 text-text' : 'bg-primary/10 text-primary'
+                  }`}>
+                    {token.scope === 'care' ? t.settings.integrationsScopeCare : t.settings.integrationsScopeRead}
+                  </span>
                 </div>
                 <div className="text-xs text-text-muted">
                   {token.last_used_at

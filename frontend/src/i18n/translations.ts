@@ -560,6 +560,10 @@ export type Translations = {
     integrationsNone: string
     integrationsNeverUsed: string
     integrationsLastUsed: (date: string) => string
+    integrationsAllowCare: string
+    integrationsAllowCareDescription: string
+    integrationsScopeRead: string
+    integrationsScopeCare: string
     integrationsLimit: string
     integrationsError: string
     calendarSubscriptionTitle: string

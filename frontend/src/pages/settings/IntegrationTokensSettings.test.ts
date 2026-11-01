@@ -70,13 +70,32 @@ describe('IntegrationTokensSettings', () => {
       await flush()
     })
 
-    expect(integrations.create).toHaveBeenCalledWith('LAveren')
+    expect(integrations.create).toHaveBeenCalledWith('LAveren', 'read')
     const values = Array.from(container.querySelectorAll('input[readonly]')).map((input) => (input as HTMLInputElement).value)
     expect(values).toEqual([
       'flo_one-time-secret-wxyz',
       'https://api.floreren.app/api/integrations/snapshot',
     ])
     expect(container.textContent).toContain('…wxyz')
+  })
+
+  it('makes a care token when logging care is allowed', async () => {
+    vi.mocked(integrations.create).mockResolvedValue({
+      id: 3, name: 'LAveren', token_hint: 'care', scope: 'care', created_at: null, last_used_at: null,
+      token: 'flo_secret-care', snapshot_url: 'https://api.floreren.app/api/integrations/snapshot',
+    })
+    await render()
+    const checkbox = container.querySelector('input[type="checkbox"]') as HTMLInputElement
+    await act(async () => {
+      checkbox.click()
+      await flush()
+    })
+    await act(async () => {
+      button(container, 'Create token').click()
+      await flush()
+    })
+    expect(integrations.create).toHaveBeenCalledWith('LAveren', 'care')
+    expect(container.textContent).toContain('Read + log care')
   })
 
   it('explains the limit on a 409', async () => {

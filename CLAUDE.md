@@ -124,10 +124,16 @@ JWT-based auth (`jose` library, `sub=account_id`). Accounts belong to one Househ
 
 ## Integrations (LAveren)
 
-Leon's local dashboard, LAveren, pulls `GET /api/integrations/snapshot`, a read-only JSON snapshot of one household (care due, recent activity, photos, plants, maps, each with a deep link). The contract and a stdlib sync script are in `integrations/laveren/`.
+Leon's local dashboard, LAveren, reads Floreren through `/api/integrations/*` (`routers/integrations.py`):
+- a JSON snapshot of one household: care due, activity, photos, plants, maps with biodiversity scores, and weather, each with a deep link
+- per-map SVG thumbnails
+- one write: `POST /care/done`
 
-- **Auth is its own token, not a login.** `integration_tokens` (migration 0082) stores only the SHA-256 of a `flo_…` token. Owners and editors make and revoke them in Settings → App. The token works on the snapshot route only; `get_current_account` never accepts it. It is bound to the account's `session_version`, so a password change retires it.
-- **Database only, cached.** The snapshot makes no weather, LLM or R2 calls. It is cached in-process for 15 min per token and sent with an ETag, so a polling dashboard does not keep Neon awake. Add new fields there only if they stay cheap.
+The contract, the stdlib client (`floreren_sync.py`) and the brief for LAveren's own agent are in `integrations/laveren/`.
+
+- **Auth is its own token, not a login.** `integration_tokens` (migration 0082) stores only the SHA-256 of a `flo_…` token. Owners and editors make and revoke them in Settings → App. The tokens work on `/api/integrations/*` only; `get_current_account` never accepts them. Each token is bound to the account's `session_version`, so a password change retires it.
+- **Scopes are fixed at creation.** `read` covers the snapshot and thumbnails. `care` adds `care/done`, which reuses `routers.care.mark_care_done` as the token's account and stops working if that account becomes a viewer. A wider scope means a new token. Never widen an existing one.
+- **Cheap and cached.** No LLM, R2 or PlantNet calls. Weather comes from the shared 1-hour Open-Meteo cache and biodiversity from `garden_biodiversity.compute_for_map`. Both fail soft to `null`. Responses are cached in-process for 15 min per token with ETags, so a polling dashboard doesn't keep Neon awake. `care/done` drops the household's cached entries. Add new fields only if they stay cheap, and bump `schema_version` only for breaking changes.
 
 ## Languages (NL/EN)
 

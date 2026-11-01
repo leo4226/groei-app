@@ -10,8 +10,9 @@ token is stored, like `calendar_subscriptions`.
 change or reset bumps the account's, which retires the token too. Someone who
 learned the password and minted a token loses it at the reset.
 
-`scope` is 'read' only for now; a future write scope ("mark watered from the
-dashboard") gets its own value instead of widening existing tokens.
+`scope` is 'read' (snapshot + map thumbnails) or 'care' (also: mark a care
+task done, as the token's account). A scope is fixed at creation; a wider one
+means a new token, so a read-only token can never start writing.
 
 Revision ID: 0082
 Revises: 0081
@@ -36,7 +37,7 @@ def upgrade() -> None:
             token_hash TEXT NOT NULL UNIQUE,
             -- Last characters of the raw token, so a list can tell two apart.
             token_hint TEXT NOT NULL,
-            scope TEXT NOT NULL DEFAULT 'read' CHECK (scope IN ('read')),
+            scope TEXT NOT NULL DEFAULT 'read' CHECK (scope IN ('read', 'care')),
             session_version INTEGER NOT NULL DEFAULT 0,
             created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
             last_used_at TIMESTAMP,
