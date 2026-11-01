@@ -239,7 +239,7 @@ export default function Settings() {
           description={t.settings.groupAppDesc}
           summary={`v${__APP_VERSION__}`}
         >
-          <AppDataPanel onInstallClick={() => setShowInstall(true)} />
+          <AppDataPanel onInstallClick={() => setShowInstall(true)} canEdit={canEdit} />
         </SettingsGroup>
 
         {/* Admin tools are grouped and badged rather than interleaved with the

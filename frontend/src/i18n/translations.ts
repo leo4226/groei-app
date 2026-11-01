@@ -545,6 +545,27 @@ export type Translations = {
     calendarGroupingNone: string
     calendarGroupingNoMaps: string
     calendarGroupingSaveError: string
+    integrationsTitle: string
+    integrationsDescription: string
+    integrationsSecurity: string
+    integrationsNameLabel: string
+    integrationsNamePlaceholder: string
+    integrationsCreate: string
+    integrationsSaveNow: string
+    integrationsTokenLabel: string
+    integrationsEndpointLabel: string
+    integrationsCopy: string
+    integrationsCopied: string
+    integrationsRevoke: string
+    integrationsNone: string
+    integrationsNeverUsed: string
+    integrationsLastUsed: (date: string) => string
+    integrationsAllowCare: string
+    integrationsAllowCareDescription: string
+    integrationsScopeRead: string
+    integrationsScopeCare: string
+    integrationsLimit: string
+    integrationsError: string
     calendarSubscriptionTitle: string
     calendarSubscriptionDescription: string
     calendarSubscriptionRecommended: string

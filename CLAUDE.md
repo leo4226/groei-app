@@ -122,6 +122,19 @@ JWT-based auth (`jose` library, `sub=account_id`). Accounts belong to one Househ
 - **Deleting an account keeps the household's history.** Since migration 0080 every FK to `users`/`accounts` has a delete rule: history (`care_log.done_by`, garden logs, …) is set NULL and shown as "former member"; per-account rows (reset links, invites, games) cascade. Use `services/account_deletion.py`.
 - **Care pushes are tracked per account** in `care_push_deliveries` (migration 0081), not on the shared schedule: each member is told once per due date, whatever the others got. `care_schedules.notified_for_due` is no longer used by the dispatch.
 
+## Integrations (LAveren)
+
+Leon's local dashboard, LAveren, reads Floreren through `/api/integrations/*` (`routers/integrations.py`):
+- a JSON snapshot of one household: care due, activity, photos, plants, maps with biodiversity scores, and weather, each with a deep link
+- per-map SVG thumbnails
+- one write: `POST /care/done`
+
+The contract, the stdlib client (`floreren_sync.py`) and the brief for LAveren's own agent are in `integrations/laveren/`.
+
+- **Auth is its own token, not a login.** `integration_tokens` (migration 0082) stores only the SHA-256 of a `flo_…` token. Owners and editors make and revoke them in Settings → App. The tokens work on `/api/integrations/*` only; `get_current_account` never accepts them. Each token is bound to the account's `session_version`, so a password change retires it.
+- **Scopes are fixed at creation.** `read` covers the snapshot and thumbnails. `care` adds `care/done`, which reuses `routers.care.mark_care_done` as the token's account and stops working if that account becomes a viewer. A wider scope means a new token. Never widen an existing one.
+- **Cheap and cached.** No LLM, R2 or PlantNet calls. Weather comes from the shared 1-hour Open-Meteo cache and biodiversity from `garden_biodiversity.compute_for_map`. Both fail soft to `null`. Responses are cached in-process for 15 min per token with ETags, so a polling dashboard doesn't keep Neon awake. `care/done` drops the household's cached entries. Add new fields only if they stay cheap, and bump `schema_version` only for breaking changes.
+
 ## Languages (NL/EN)
 
 The app is fully bilingual Dutch/English; `accounts.language` ('nl'|'en') drives the UI. Rules for **every** user-facing feature (2026-07 language audit — a big NL/EN-mixing cleanup — is the origin of all of these):
