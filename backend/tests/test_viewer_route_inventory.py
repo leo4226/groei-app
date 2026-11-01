@@ -57,6 +57,8 @@ POLICY_ENTRIES = (
         ("POST", "/api/care/undo"),
         ("POST", "/api/chat"),
         ("POST", "/api/discover"),
+        ("POST", "/api/integrations/tokens"),
+        ("DELETE", "/api/integrations/tokens/{token_id}"),
         ("DELETE", "/api/discover/{discovery_id}"),
         ("PATCH", "/api/discover/{discovery_id}"),
         ("PATCH", "/api/discover/{discovery_id}/location"),

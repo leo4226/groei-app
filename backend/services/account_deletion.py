@@ -13,6 +13,8 @@ Callers own the transaction.
 """
 from __future__ import annotations
 
+from services import integration_snapshot
+
 
 async def clear_user_references(db, user_id: int) -> None:
     """Keep every record this profile left in the household, minus the name."""
@@ -40,6 +42,7 @@ async def delete_account(db, account_id: int) -> None:
     await db.execute("DELETE FROM password_reset_tokens WHERE account_id = ?", (account_id,))
     await db.execute("DELETE FROM plantnet_quota WHERE account_id = ?", (account_id,))
     await db.execute("DELETE FROM household_invites WHERE created_by = ?", (account_id,))
+    await db.execute("DELETE FROM integration_tokens WHERE account_id = ?", (account_id,))
     # Keyed on users.account_id (migration 0073), never on the display name: a
     # name match once deleted an unrelated profile that happened to share it.
     profiles = await db.execute_fetchall(
@@ -48,3 +51,5 @@ async def delete_account(db, account_id: int) -> None:
     for row in profiles:
         await delete_user_profile(db, row["id"])
     await db.execute("DELETE FROM accounts WHERE id = ?", (account_id,))
+    # A dashboard's cached snapshot must not outlive the account here.
+    integration_snapshot.forget_account(account_id)

@@ -243,6 +243,19 @@ SCHEMA = """
         updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         revoked_at TIMESTAMP
     );
+    CREATE TABLE integration_tokens (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        account_id INTEGER NOT NULL,
+        household_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        token_hash TEXT NOT NULL UNIQUE,
+        token_hint TEXT NOT NULL,
+        scope TEXT NOT NULL DEFAULT 'read',
+        session_version INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        last_used_at TIMESTAMP,
+        revoked_at TIMESTAMP
+    );
     CREATE TABLE plantnet_quota (
         account_id INTEGER NOT NULL,
         date TEXT NOT NULL,

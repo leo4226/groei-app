@@ -122,6 +122,13 @@ JWT-based auth (`jose` library, `sub=account_id`). Accounts belong to one Househ
 - **Deleting an account keeps the household's history.** Since migration 0080 every FK to `users`/`accounts` has a delete rule: history (`care_log.done_by`, garden logs, …) is set NULL and shown as "former member"; per-account rows (reset links, invites, games) cascade. Use `services/account_deletion.py`.
 - **Care pushes are tracked per account** in `care_push_deliveries` (migration 0081), not on the shared schedule: each member is told once per due date, whatever the others got. `care_schedules.notified_for_due` is no longer used by the dispatch.
 
+## Integrations (LAveren)
+
+Leon's local dashboard, LAveren, pulls `GET /api/integrations/snapshot`, a read-only JSON snapshot of one household (care due, recent activity, photos, plants, maps, each with a deep link). The contract and a stdlib sync script are in `integrations/laveren/`.
+
+- **Auth is its own token, not a login.** `integration_tokens` (migration 0082) stores only the SHA-256 of a `flo_…` token. Owners and editors make and revoke them in Settings → App. The token works on the snapshot route only; `get_current_account` never accepts it. It is bound to the account's `session_version`, so a password change retires it.
+- **Database only, cached.** The snapshot makes no weather, LLM or R2 calls. It is cached in-process for 15 min per token and sent with an ETag, so a polling dashboard does not keep Neon awake. Add new fields there only if they stay cheap.
+
 ## Languages (NL/EN)
 
 The app is fully bilingual Dutch/English; `accounts.language` ('nl'|'en') drives the UI. Rules for **every** user-facing feature (2026-07 language audit — a big NL/EN-mixing cleanup — is the origin of all of these):

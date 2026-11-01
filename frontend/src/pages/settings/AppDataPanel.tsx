@@ -5,9 +5,11 @@ import Glyph from '../../components/ui/Glyph'
 import { resetAssistant } from '../../components/HelpAssistant'
 import { localIsoDate } from '../../utils/dateFormat'
 import { userFacingError } from '../../utils/userFacingError'
+import IntegrationTokensSettings from './IntegrationTokensSettings'
 
 interface Props {
   onInstallClick: () => void
+  canEdit?: boolean
 }
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -29,7 +31,7 @@ function downloadBlob(blob: Blob, filename: string) {
  * to sit because push depends on it. Someone looking for it looks under the
  * app, not under alerts.
  */
-export default function AppDataPanel({ onInstallClick }: Props) {
+export default function AppDataPanel({ onInstallClick, canEdit = true }: Props) {
   const t = useT()
   const [busy, setBusy] = useState<'json' | 'csv' | null>(null)
   const [ready, setReady] = useState(false)
@@ -102,6 +104,9 @@ export default function AppDataPanel({ onInstallClick }: Props) {
         {ready && <p className="mt-2 text-sm text-primary">{t.settings.downloadReady}</p>}
         {error && <p className="mt-2 text-sm text-fiery-red">{error}</p>}
       </div>
+
+      {/* ── Connected dashboards (LAveren) ───────────────────────────────── */}
+      <IntegrationTokensSettings canEdit={canEdit} />
 
       {/* ── Assistant ────────────────────────────────────────────────────── */}
       <div className="border-t border-border pt-4">

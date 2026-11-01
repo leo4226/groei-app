@@ -47,6 +47,7 @@ from routers import quiz as quiz_router
 from routers import study as study_router
 from routers import share as share_router
 from routers import atlas as atlas_router
+from routers import integrations as integrations_router
 
 
 @asynccontextmanager
@@ -303,6 +304,8 @@ app.include_router(study_router.router, prefix="/api")
 app.include_router(share_router.router)
 # Public garden atlas — anonymous browse surface for opt-in gardens (/api/atlas).
 app.include_router(atlas_router.router, prefix="/api")
+# Read-only snapshot for personal dashboards (LAveren), behind integration tokens.
+app.include_router(integrations_router.router, prefix="/api")
 
 # Serve the built frontend (production mode)
 _frontend_dist = Path(__file__).parent.parent / "frontend" / "dist"

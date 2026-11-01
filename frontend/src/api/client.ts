@@ -1118,6 +1118,28 @@ export const calendarSubscription = {
   },
 }
 
+/** Read-only token for a personal dashboard (LAveren); see backend routers/integrations.py. */
+export interface IntegrationToken {
+  id: number
+  name: string
+  token_hint: string
+  scope: string
+  created_at: string | null
+  last_used_at: string | null
+}
+
+export interface IntegrationTokenCreated extends IntegrationToken {
+  /** The raw token — returned once, never again. */
+  token: string
+  snapshot_url: string
+}
+
+export const integrations = {
+  list: () => api<IntegrationToken[]>('GET', '/integrations/tokens'),
+  create: (name: string) => api<IntegrationTokenCreated>('POST', '/integrations/tokens', { body: { name } }),
+  revoke: (id: number) => api<void>('DELETE', `/integrations/tokens/${id}`),
+}
+
 export interface NotificationPrefs {
   digest_enabled: boolean
   digest_time: string  // "HH:MM" — the email digest hour (Europe/Amsterdam)
