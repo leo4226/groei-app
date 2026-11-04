@@ -1,8 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useFloreren } from '../store/useFloreren'
 import { useT } from '../context/LanguageContext'
-import { icons, type HouseholdMember, type NotificationPrefs } from '../api/client'
+import {
+  calendarSubscription, careRhythm, household, icons, integrations,
+  type HouseholdMember, type NotificationPrefs,
+} from '../api/client'
 import type { IconSyncResult } from '../types'
 import { clearToken } from '../api/auth'
 import PageMasthead from '../components/ui/PageMasthead'
@@ -15,16 +18,25 @@ import InstallPromptSheet from '../components/install/InstallPromptSheet'
 import YouPanel, { type Theme } from './settings/YouPanel'
 import HouseholdPanel from './settings/HouseholdPanel'
 import NotificationsPanel from './settings/NotificationsPanel'
-import PlacesPanel from './settings/PlacesPanel'
 import AppDataPanel from './settings/AppDataPanel'
 import CalendarGroupingSettings from './settings/CalendarGroupingSettings'
 import CareRhythmSettings from './settings/CareRhythmSettings'
 import CalendarSubscriptionSettings from './settings/CalendarSubscriptionSettings'
+import IntegrationTokensSettings from './settings/IntegrationTokensSettings'
+import { CARE_RHYTHM_CHANGED_EVENT } from '../utils/careRhythmEvents'
 import { userFacingError } from '../utils/userFacingError'
 
 // Must match the boot script in index.html, which applies the theme before
 // React loads to avoid a flash of the wrong theme.
 const THEME_KEY = 'floreren-theme'
+
+/** What the Care and Connections groups say while collapsed. */
+interface PlanningSummary {
+  rhythmDays: number[] | null   // null = no saved Water rhythm
+  groupedSpaces: number
+  feedActive: boolean
+  dashboardTokens: number
+}
 
 /**
  * Settings, as six collapsible groups plus an admin one.
@@ -40,11 +52,16 @@ const THEME_KEY = 'floreren-theme'
  * interrupts me; name my places; deal with the app itself. Each group carries
  * a one-line summary of its current state so the whole configuration is
  * readable without opening anything.
+ *
+ * 2026-11 audit: "Locations" is gone (nothing could put a plant in one any
+ * more; maps took that job), and the calendar feed and dashboard tokens share a
+ * Connections group, since both are secret links that let something outside
+ * the app read the garden.
  */
 export default function Settings() {
   const t = useT()
   const navigate = useNavigate()
-  const { users, locations, activeUserId } = useFloreren()
+  const { users, activeUserId } = useFloreren()
   // The signed-in account now lives in the store (fetched by load() /
   // refreshAll()), so every capability-gated page reads the same source
   // instead of firing its own /auth/me.
@@ -73,6 +90,8 @@ export default function Settings() {
   const [prefs, setPrefs] = useState<NotificationPrefs | null>(null)
   const [pushOnHere, setPushOnHere] = useState(false)
 
+  const [planning, setPlanning] = useState<PlanningSummary | null>(null)
+
   const [syncing, setSyncing] = useState(false)
   const [syncResult, setSyncResult] = useState<IconSyncResult | null>(null)
   const [syncError, setSyncError] = useState<string | null>(null)
@@ -88,6 +107,43 @@ export default function Settings() {
     }
     loadMe()
   }, [me, loadMe])
+
+  // The Care and Connections panels unmount while collapsed, so their summaries
+  // come from these four cheap reads. Each one failing on its own just leaves
+  // its part of the summary out.
+  const loadPlanning = useCallback(async () => {
+    const [rhythm, grouping, feed, tokens] = await Promise.allSettled([
+      careRhythm.settings(),
+      household.calendarGrouping(),
+      calendarSubscription.status(),
+      integrations.list(),
+    ])
+    const days = rhythm.status === 'fulfilled' && rhythm.value.saved
+      ? [...new Set([
+        ...rhythm.value.config.outdoor_weekdays,
+        ...rhythm.value.config.indoor_weekdays,
+      ])].sort((a, b) => a - b)
+      : null
+    setPlanning({
+      rhythmDays: days && days.length > 0 ? days : null,
+      groupedSpaces: grouping.status === 'fulfilled'
+        ? grouping.value.rules.filter((rule) => rule.care_types.length > 0).length
+        : 0,
+      feedActive: feed.status === 'fulfilled' && feed.value.active,
+      dashboardTokens: tokens.status === 'fulfilled' ? tokens.value.length : 0,
+    })
+  }, [])
+
+  useEffect(() => {
+    void loadPlanning()
+    window.addEventListener(CARE_RHYTHM_CHANGED_EVENT, loadPlanning)
+    return () => window.removeEventListener(CARE_RHYTHM_CHANGED_EVENT, loadPlanning)
+  }, [loadPlanning])
+
+  // Closing a group is when its summary comes back into view.
+  const refreshPlanningOnClose = useCallback((open: boolean) => {
+    if (!open) void loadPlanning()
+  }, [loadPlanning])
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-color-scheme: dark)')
@@ -149,9 +205,26 @@ export default function Settings() {
     return parts.join(' · ')
   }, [prefs, pushOnHere, t])
 
-  const placesSummary = locations.length === 1
-    ? t.settings.locationCountOne
-    : t.settings.locationCountMany.replace('{count}', String(locations.length))
+  const careSummary = useMemo(() => {
+    if (!planning) return t.settings.groupCareSummary
+    const parts = [
+      planning.rhythmDays
+        ? t.settings.careSummaryWater(
+          planning.rhythmDays.map((day) => t.settings.careRhythmWeekdaysShort[day - 1]).join(' · '),
+        )
+        : t.settings.careSummaryNoRhythm,
+    ]
+    if (planning.groupedSpaces > 0) parts.push(t.settings.careSummaryGrouped(planning.groupedSpaces))
+    return parts.join(' · ')
+  }, [planning, t])
+
+  const connectionsSummary = useMemo(() => {
+    if (!planning) return undefined
+    const parts: string[] = []
+    if (planning.feedActive) parts.push(t.settings.connectionsFeedActive)
+    if (planning.dashboardTokens > 0) parts.push(t.settings.connectionsTokenCount(planning.dashboardTokens))
+    return parts.length > 0 ? parts.join(' · ') : t.settings.connectionsNone
+  }, [planning, t])
 
   return (
     <div>
@@ -200,12 +273,12 @@ export default function Settings() {
           icon="droplet"
           title={t.settings.groupCare}
           description={t.settings.groupCareDesc}
-          summary={t.settings.groupCareSummary}
+          summary={careSummary}
+          onOpenChange={refreshPlanningOnClose}
         >
-          <div className="space-y-3">
-            <CareRhythmSettings canEdit={canEdit} />
-            <CalendarGroupingSettings embedded canEdit={canEdit} />
-            <CalendarSubscriptionSettings canEdit={canEdit} />
+          <div className="divide-y divide-border">
+            <div className="pb-5"><CareRhythmSettings canEdit={canEdit} /></div>
+            <div className="pt-5"><CalendarGroupingSettings embedded canEdit={canEdit} /></div>
           </div>
         </SettingsGroup>
 
@@ -217,19 +290,22 @@ export default function Settings() {
           summary={notificationsSummary}
         >
           <NotificationsPanel
-            canEdit={canEdit}
             onPrefsChange={(p, push) => { setPrefs(p); setPushOnHere(push) }}
           />
         </SettingsGroup>
 
         <SettingsGroup
-          id="places"
-          icon="pin"
-          title={t.settings.groupPlaces}
-          description={t.settings.groupPlacesDesc}
-          summary={placesSummary}
+          id="connections"
+          icon="calendar"
+          title={t.settings.groupConnections}
+          description={t.settings.groupConnectionsDesc}
+          summary={connectionsSummary}
+          onOpenChange={refreshPlanningOnClose}
         >
-          <PlacesPanel canEdit={canEdit} />
+          <div className="divide-y divide-border">
+            <div className="pb-5"><CalendarSubscriptionSettings canEdit={canEdit} /></div>
+            <div className="pt-5"><IntegrationTokensSettings canEdit={canEdit} /></div>
+          </div>
         </SettingsGroup>
 
         <SettingsGroup
@@ -239,7 +315,7 @@ export default function Settings() {
           description={t.settings.groupAppDesc}
           summary={`v${__APP_VERSION__}`}
         >
-          <AppDataPanel onInstallClick={() => setShowInstall(true)} canEdit={canEdit} />
+          <AppDataPanel onInstallClick={() => setShowInstall(true)} />
         </SettingsGroup>
 
         {/* Admin tools are grouped and badged rather than interleaved with the

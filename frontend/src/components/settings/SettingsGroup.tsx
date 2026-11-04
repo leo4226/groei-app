@@ -19,6 +19,9 @@ interface Props {
   /** Marks admin-only groups with a quiet badge. */
   badge?: string
   defaultOpen?: boolean
+  /** Told when the group opens or closes, e.g. to refresh its summary after
+   * the panel inside changed something. */
+  onOpenChange?: (open: boolean) => void
 }
 
 /**
@@ -40,8 +43,18 @@ export default function SettingsGroup({
   children,
   badge,
   defaultOpen = false,
+  onOpenChange,
 }: Props) {
   const [open, setOpen] = useState(defaultOpen)
+  const reportedOpen = useRef(open)
+
+  // Report changes, not the initial state (the ref also keeps a new callback
+  // identity from firing it twice).
+  useEffect(() => {
+    if (reportedOpen.current === open) return
+    reportedOpen.current = open
+    onOpenChange?.(open)
+  }, [open, onOpenChange])
   const panelId = useId()
   const ref = useRef<HTMLElement>(null)
 

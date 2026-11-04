@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react'
 import { useFloreren } from '../../store/useFloreren'
 import { useT } from '../../context/LanguageContext'
 import { auth, household, icons, type AccountMe } from '../../api/client'
+import { clearToken } from '../../api/auth'
 import type { PlantIcon } from '../../types'
 import Glyph from '../../components/ui/Glyph'
 import Avatar from '../../components/ui/Avatar'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
 
 export type Theme = 'light' | 'dark' | 'system'
 
@@ -18,8 +20,9 @@ interface Props {
 }
 
 /**
- * Everything that is about *you*: your name and avatar, your password, and the
- * two preferences that follow you around the app (language and theme).
+ * Everything that is about *you*: your name and avatar, your password, the two
+ * preferences that follow you around the app (language and theme), and the
+ * account itself (signing out everywhere, deleting it).
  *
  * Theme and language used to be separate top-level sections holding three and
  * two buttons respectively, while your profile sat somewhere else entirely.
@@ -33,9 +36,9 @@ interface Props {
 export default function YouPanel({ me, theme, onThemeChange, onProfileSaved }: Props) {
   const t = useT()
   const { users, activeUserId, updateUserLanguage } = useFloreren()
-  // Name/avatar/password are profile writes the backend gates by can_edit
-  // (PATCH /household/members/{id}, POST /auth/change-password). Language and
-  // theme stay editable: they are self/device preferences, not household data.
+  // Name and avatar are what the rest of the household sees, so the backend
+  // gates them by can_edit (PATCH /household/members/{id}). Language, theme,
+  // password and the account itself are the caller's own, so viewers keep them.
   const canEdit = me?.capabilities.can_edit ?? false
   const onlyEditorsTitle = t.settings.onlyEditorsCanChange
 
@@ -52,9 +55,21 @@ export default function YouPanel({ me, theme, onThemeChange, onProfileSaved }: P
   const [showPassword, setShowPassword] = useState(false)
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
+  const [repeatPassword, setRepeatPassword] = useState('')
+  const [revealPasswords, setRevealPasswords] = useState(false)
   const [changing, setChanging] = useState(false)
   const [changed, setChanged] = useState(false)
   const [passwordError, setPasswordError] = useState<string | null>(null)
+
+  const [confirmLogoutAll, setConfirmLogoutAll] = useState(false)
+  const [accountError, setAccountError] = useState<string | null>(null)
+  const [showDelete, setShowDelete] = useState(false)
+  // Only an owner can be blocked (others still in the household), so only an
+  // owner's open needs the member count.
+  const [otherMembers, setOtherMembers] = useState<number | null>(null)
+  const [deletePassword, setDeletePassword] = useState('')
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   // Seeded from the page's single account fetch — this panel no longer makes
   // its own request, which is what turned one call on mount into three.
@@ -102,21 +117,81 @@ export default function YouPanel({ me, theme, onThemeChange, onProfileSaved }: P
       setPasswordError(t.settings.passwordMinLength)
       return
     }
+    if (newPassword !== repeatPassword) {
+      setPasswordError(t.settings.passwordMismatch)
+      return
+    }
     setChanging(true)
     try {
       await auth.changePassword({ current_password: currentPassword, new_password: newPassword })
       setChanged(true)
       setCurrentPassword('')
       setNewPassword('')
+      setRepeatPassword('')
       setTimeout(() => { setChanged(false); setShowPassword(false) }, 4000)
-    } catch {
-      setPasswordError(t.settings.passwordError)
+    } catch (e) {
+      const status = (e as { status?: number }).status
+      setPasswordError(
+        status === 400 ? t.settings.passwordError
+          : status === 429 ? t.settings.tooManyAttempts
+            : t.common.error,
+      )
     } finally {
       setChanging(false)
     }
   }
 
+  async function handleLogoutAll() {
+    setConfirmLogoutAll(false)
+    setAccountError(null)
+    try {
+      await auth.logoutAll()
+    } catch {
+      setAccountError(t.settings.logoutAllError)
+      return
+    }
+    // This token died with the rest; a full reload drops every cached store.
+    clearToken()
+    window.location.href = '/login'
+  }
+
+  function toggleDelete() {
+    const next = !showDelete
+    setShowDelete(next)
+    setDeleteError(null)
+    setDeletePassword('')
+    if (next && me?.role === 'owner' && otherMembers === null) {
+      household.members()
+        .then((members) => setOtherMembers(members.filter((m) => !m.is_self).length))
+        .catch(() => setOtherMembers(0))
+    }
+  }
+
+  async function handleDeleteAccount() {
+    if (!deletePassword) return
+    setDeleting(true)
+    setDeleteError(null)
+    try {
+      await auth.deleteAccount(deletePassword)
+    } catch (e) {
+      const status = (e as { status?: number }).status
+      setDeleteError(
+        status === 400 ? t.settings.deleteAccountWrongPassword
+          : status === 409 ? t.settings.deleteAccountOwnerHasMembers
+            : status === 429 ? t.settings.tooManyAttempts
+              : t.settings.deleteAccountError,
+      )
+      setDeleting(false)
+      return
+    }
+    clearToken()
+    window.location.href = '/login'
+  }
+
   const language = users.find((u) => u.id === activeUserId)?.language ?? 'nl'
+  const isOwner = me?.role === 'owner'
+  const ownerBlocked = isOwner && (otherMembers ?? 0) > 0
+  const passwordInputType = revealPasswords ? 'text' : 'password'
 
   return (
     <div className="space-y-6">
@@ -248,37 +323,55 @@ export default function YouPanel({ me, theme, onThemeChange, onProfileSaved }: P
       <div className="border-t border-border pt-4">
         <button
           onClick={() => setShowPassword((v) => !v)}
-          disabled={!canEdit}
           aria-expanded={showPassword}
-          title={canEdit ? undefined : onlyEditorsTitle}
-          className="w-full rounded-xl border border-border py-2.5 text-sm font-semibold text-text transition-transform active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+          className="w-full rounded-xl border border-border py-2.5 text-sm font-semibold text-text transition-transform active:scale-[0.98]"
         >
           {t.settings.changePassword}
         </button>
         {showPassword && (
           <div className="mt-3 space-y-3">
             <input
-              type="password"
+              type={passwordInputType}
               autoComplete="current-password"
-              disabled={!canEdit}
-              className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium outline-none focus:border-primary/50 disabled:opacity-50"
+              aria-label={t.settings.currentPassword}
+              className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium outline-none focus:border-primary/50"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
               placeholder={t.settings.currentPassword}
             />
             <input
-              type="password"
+              type={passwordInputType}
               autoComplete="new-password"
-              disabled={!canEdit}
-              className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium outline-none focus:border-primary/50 disabled:opacity-50"
+              aria-label={t.settings.newPassword}
+              className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium outline-none focus:border-primary/50"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               placeholder={t.settings.newPassword}
             />
-            <p className="text-[11px] text-text-muted">{t.settings.passwordMinLength}</p>
+            <input
+              type={passwordInputType}
+              autoComplete="new-password"
+              aria-label={t.settings.newPasswordRepeat}
+              className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium outline-none focus:border-primary/50"
+              value={repeatPassword}
+              onChange={(e) => setRepeatPassword(e.target.value)}
+              placeholder={t.settings.newPasswordRepeat}
+            />
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-[11px] text-text-muted">{t.settings.passwordMinLength}</p>
+              <label className="flex shrink-0 cursor-pointer items-center gap-1.5 text-xs text-text-muted">
+                <input
+                  type="checkbox"
+                  className="h-3.5 w-3.5 accent-primary"
+                  checked={revealPasswords}
+                  onChange={(e) => setRevealPasswords(e.target.checked)}
+                />
+                {t.settings.showPasswords}
+              </label>
+            </div>
             <button
               onClick={handleChangePassword}
-              disabled={changing || !currentPassword || !newPassword || !canEdit}
+              disabled={changing || !currentPassword || !newPassword || !repeatPassword}
               className="flex w-full items-center justify-center gap-2 rounded-full bg-primary py-2.5 text-sm font-semibold text-white transition-transform active:scale-[0.98] disabled:opacity-50"
             >
               {changing ? (
@@ -290,6 +383,98 @@ export default function YouPanel({ me, theme, onThemeChange, onProfileSaved }: P
           </div>
         )}
       </div>
+
+      {/* ── Sessions & account ───────────────────────────────────────────── */}
+      <div className="border-t border-border pt-4">
+        <div className="mb-3 text-sm font-semibold">{t.settings.accountTitle}</div>
+
+        {/* The button says what it does; the text beside it says when you'd want it. */}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <p className="min-w-0 text-xs text-text-muted">{t.settings.logoutAllDesc}</p>
+          <button
+            onClick={() => setConfirmLogoutAll(true)}
+            className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-2 text-sm font-semibold text-text transition-colors hover:border-primary/50"
+          >
+            <Glyph name="lock" size={14} />
+            {t.settings.logoutAll}
+          </button>
+        </div>
+        {accountError && <p className="mt-2 text-sm text-fiery-red">{accountError}</p>}
+
+        <div className="mt-4 rounded-xl border border-red-400/30 p-3" data-delete-account>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+            <p className="min-w-0 text-xs text-text-muted">{t.settings.deleteAccountDesc}</p>
+            <button
+              onClick={toggleDelete}
+              aria-expanded={showDelete}
+              className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl border border-red-400/40 px-3 py-2 text-sm font-semibold text-red-700 transition-colors hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950/20"
+            >
+              <Glyph name="trash" size={14} />
+              {t.settings.deleteAccount}
+            </button>
+          </div>
+
+          {showDelete && (
+            <div className="mt-3 space-y-3 border-t border-red-400/20 pt-3">
+              {isOwner && otherMembers === null ? (
+                <p className="text-xs text-text-muted">{t.common.loading}</p>
+              ) : ownerBlocked ? (
+                <p className="text-xs leading-relaxed text-text-soft" data-delete-account-blocked>
+                  {t.settings.deleteAccountOwnerHasMembers}
+                </p>
+              ) : (
+                <>
+                  <p className="text-xs leading-relaxed text-text-soft" data-delete-account-warning>
+                    {isOwner
+                      ? t.settings.deleteAccountLastMemberWarning
+                      : t.settings.deleteAccountMemberWarning(me?.household_name ?? '')}
+                  </p>
+                  {isOwner && (
+                    <a href="#app" className="inline-block text-xs font-semibold text-primary underline">
+                      {t.settings.deleteAccountExportFirst}
+                    </a>
+                  )}
+                  <div>
+                    <label htmlFor="delete-account-password" className="mb-1.5 block text-xs font-medium text-text-muted">
+                      {t.settings.deleteAccountPasswordLabel}
+                    </label>
+                    <input
+                      id="delete-account-password"
+                      type="password"
+                      autoComplete="current-password"
+                      className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium outline-none focus:border-red-400/60"
+                      value={deletePassword}
+                      onChange={(e) => setDeletePassword(e.target.value)}
+                    />
+                  </div>
+                  <button
+                    onClick={handleDeleteAccount}
+                    disabled={deleting || !deletePassword}
+                    className="flex w-full items-center justify-center gap-2 rounded-full bg-red-600 py-2.5 text-sm font-semibold text-white transition-transform active:scale-[0.98] disabled:opacity-50"
+                  >
+                    {deleting ? (
+                      <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" /> {t.common.saving}</>
+                    ) : t.settings.deleteAccountConfirm}
+                  </button>
+                </>
+              )}
+              {deleteError && <p className="text-sm text-fiery-red" role="alert">{deleteError}</p>}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {confirmLogoutAll && (
+        <ConfirmDialog
+          title={t.settings.logoutAll}
+          message={t.settings.logoutAllConfirm}
+          confirmLabel={t.settings.logoutAll}
+          cancelLabel={t.settings.cancel}
+          destructive
+          onConfirm={() => void handleLogoutAll()}
+          onCancel={() => setConfirmLogoutAll(false)}
+        />
+      )}
     </div>
   )
 }

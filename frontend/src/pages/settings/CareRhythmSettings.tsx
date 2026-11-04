@@ -218,7 +218,7 @@ export default function CareRhythmSettings({ canEdit = true }: { canEdit?: boole
             : null
 
   return (
-    <div className="card p-4" data-care-rhythm-settings>
+    <div data-care-rhythm-settings>
       <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">

@@ -691,18 +691,8 @@ export type Translations = {
     memberJoined: string
     whoIsGardening: string
     active: string
-    locations: string
-    addLocation: string
-    locationNamePlaceholder: string
-    editLocation: string
-    deleteLocation: string
     save: string
     cancel: string
-    confirmDeleteLocation: string
-    locationHasPlants: string
-    moveUp: string
-    moveDown: string
-    rename: string
     language: string
     languageNl: string
     languageEn: string
@@ -716,8 +706,6 @@ export type Translations = {
     groupCareSummary: string
     groupNotifications: string
     groupNotificationsDesc: string
-    groupPlaces: string
-    groupPlacesDesc: string
     groupApp: string
     groupAppDesc: string
     groupAdmin: string
@@ -727,8 +715,6 @@ export type Translations = {
     // Collapsed-group summaries
     memberCountOne: string
     memberCountMany: string
-    locationCountOne: string
-    locationCountMany: string
     digestOnAt: string
     digestOff: string
     pushOn: string
@@ -746,12 +732,6 @@ export type Translations = {
     editMemberTitle: string
     removeMemberNamed: string
     removeConfirmNamed: string
-    renameNamed: string
-    deleteLocationNamed: string
-    confirmDeleteLocationNamed: string
-    locationIcon: string
-    locationsDescription: string
-    noLocations: string
     assistantDescription: string
     themeDeviceHint: string
     quietHoursStart: string
@@ -817,6 +797,38 @@ export type Translations = {
     rolePickerLabel: string       // "Change role" — owner-only member role control
     inviteRoleLabel: string       // "Invite as" — owner-only invite-role choice
     roleChangeError: string       // "Fout bij rol wijzigen" / "Error changing role"
+    // ── Settings audit (2026-11) ──
+    groupConnections: string
+    groupConnectionsDesc: string
+    connectionsNone: string
+    connectionsFeedActive: string
+    connectionsTokenCount: (count: number) => string
+    careSummaryWater: (days: string) => string
+    careSummaryNoRhythm: string
+    careSummaryGrouped: (count: number) => string
+    careRhythmWeekdaysShort: [string, string, string, string, string, string, string]
+    calendarGroupingEdit: string
+    calendarGroupingDone: string
+    calendarGroupingSessions: string
+    accountTitle: string
+    logoutAll: string
+    logoutAllDesc: string
+    logoutAllConfirm: string
+    logoutAllError: string
+    deleteAccount: string
+    deleteAccountDesc: string
+    deleteAccountMemberWarning: (household: string) => string
+    deleteAccountLastMemberWarning: string
+    deleteAccountOwnerHasMembers: string
+    deleteAccountExportFirst: string
+    deleteAccountPasswordLabel: string
+    deleteAccountConfirm: string
+    deleteAccountWrongPassword: string
+    deleteAccountError: string
+    tooManyAttempts: string
+    newPasswordRepeat: string
+    passwordMismatch: string
+    showPasswords: string
   }
 
   // ── Sun / heatmap controls ──────────────────────────────────────

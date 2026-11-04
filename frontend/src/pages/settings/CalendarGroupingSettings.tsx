@@ -37,7 +37,19 @@ export default function CalendarGroupingSettings({ embedded = false, canEdit = t
   const [preferences, setPreferences] = useState<CalendarGroupingPreferences | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(false)
+  // Each space is a one-line row until opened: with every space expanded this
+  // card was 3 quick-setup buttons plus 8 care-type pills per map, all at once.
+  const [expanded, setExpanded] = useState<Set<number>>(() => new Set())
   const writeDisabled = !canEdit
+
+  function toggleExpanded(mapId: number) {
+    setExpanded((current) => {
+      const next = new Set(current)
+      if (next.has(mapId)) next.delete(mapId)
+      else next.add(mapId)
+      return next
+    })
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -92,7 +104,7 @@ export default function CalendarGroupingSettings({ embedded = false, canEdit = t
   }
 
   const content = (
-    <div className="card p-4">
+    <div className={embedded ? '' : 'card p-4'}>
         <div className="flex flex-col items-start gap-2 sm:flex-row sm:justify-between sm:gap-4">
           <div>
             <h3
@@ -126,6 +138,7 @@ export default function CalendarGroupingSettings({ embedded = false, canEdit = t
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 mt-4">
             {preferences.maps.map((map) => {
               const selected = selectedTypes(map.id)
+              const isOpen = expanded.has(map.id)
               const similarCount = preferences.maps.filter(
                 (candidate) => candidate.map_type === map.map_type,
               ).length
@@ -136,99 +149,121 @@ export default function CalendarGroupingSettings({ embedded = false, canEdit = t
                   className="rounded-2xl border border-border bg-paper p-3.5"
                 >
                   <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0 break-words font-heading font-semibold text-base text-text">{map.name}</div>
-                    <span
-                      className="shrink-0 rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary"
-                      data-calendar-map-type
-                    >
-                      {map.map_type === 'indoor'
-                        ? t.settings.calendarGroupingIndoor
-                        : t.settings.calendarGroupingOutdoor}
-                    </span>
-                  </div>
-
-                  <div
-                    className="mt-3 text-xs font-medium text-text-muted"
-                    data-calendar-quick-setup
-                  >
-                    {t.settings.calendarGroupingQuickSetup}
-                  </div>
-                  <div className="flex flex-wrap gap-2 mt-1.5">
-                    <button
-                      type="button"
-                      disabled={saving || writeDisabled}
-                      onClick={() => setMapTypes(map.id, map.recommended_care_types)}
-                      className="min-h-11 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-text-soft hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50"
-                    >
-                      {t.settings.calendarGroupingRecommended}
-                    </button>
-                    <button
-                      type="button"
-                      disabled={saving || writeDisabled}
-                      onClick={() => setMapTypes(map.id, map.recurring_care_types)}
-                      className="min-h-11 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-text-soft hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50"
-                    >
-                      {t.settings.calendarGroupingAllRecurring}
-                    </button>
-                    <button
-                      type="button"
-                      disabled={saving || writeDisabled}
-                      onClick={() => setMapTypes(map.id, [])}
-                      className="min-h-11 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-text-soft hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50"
-                    >
-                      {t.settings.calendarGroupingClear}
-                    </button>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    {GROUPABLE_CARE_TYPES.map((careType) => {
-                      const isSelected = selected.includes(careType)
-                      return (
-                        <button
-                          key={careType}
-                          type="button"
-                          aria-pressed={isSelected}
-                          disabled={saving || writeDisabled}
-                          onClick={() => setMapTypes(
-                            map.id,
-                            isSelected
-                              ? selected.filter((type) => type !== careType)
-                              : GROUPABLE_CARE_TYPES.filter((type) => (
-                                  type === careType || selected.includes(type)
-                                )),
-                          )}
-                          className={`min-h-11 font-heading text-sm rounded-full border px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
-                            isSelected
-                              ? 'bg-primary/10 border-primary text-primary font-medium'
-                              : 'bg-surface border-border text-text-soft'
-                          } disabled:opacity-50`}
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="min-w-0 break-words font-heading font-semibold text-base text-text">{map.name}</span>
+                        <span
+                          className="shrink-0 rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary"
+                          data-calendar-map-type
                         >
-                          {t.careTypes[careType]}
-                        </button>
-                      )
-                    })}
+                          {map.map_type === 'indoor'
+                            ? t.settings.calendarGroupingIndoor
+                            : t.settings.calendarGroupingOutdoor}
+                        </span>
+                      </div>
+                      <div className="mt-1 text-xs text-text-soft" data-calendar-grouping-summary>
+                        {t.settings.calendarGroupingSessions}:{' '}
+                        {selected.length > 0
+                          ? selected.map((careType) => t.careTypes[careType]).join(', ')
+                          : t.settings.calendarGroupingNone}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      aria-expanded={isOpen}
+                      onClick={() => toggleExpanded(map.id)}
+                      className="min-h-11 shrink-0 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-primary hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                    >
+                      {isOpen ? t.settings.calendarGroupingDone : t.settings.calendarGroupingEdit}
+                    </button>
                   </div>
 
-                  <div className="mt-3 flex flex-col items-start gap-1 border-t border-border pt-3 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
-                    <div className="text-xs text-text-soft">
-                      {t.settings.calendarGroupingRecurring}: {' '}
-                      {map.recurring_care_types.length > 0
-                        ? map.recurring_care_types.map((careType) => t.careTypes[careType]).join(', ')
-                        : t.settings.calendarGroupingNone}
-                    </div>
-                    {similarCount > 1 && (
-                      <button
-                        type="button"
-                        disabled={saving || writeDisabled}
-                        onClick={() => copyToSimilarMaps(map.id)}
-                        className="inline-flex min-h-11 max-w-full items-center text-left text-xs font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50"
+                  {isOpen && (
+                    <>
+                      <div
+                        className="mt-3 text-xs font-medium text-text-muted"
+                        data-calendar-quick-setup
                       >
-                        {map.map_type === 'indoor'
-                          ? t.settings.calendarGroupingCopyIndoor
-                          : t.settings.calendarGroupingCopyOutdoor}
-                      </button>
-                    )}
-                  </div>
+                        {t.settings.calendarGroupingQuickSetup}
+                      </div>
+                      <div className="flex flex-wrap gap-2 mt-1.5">
+                        <button
+                          type="button"
+                          disabled={saving || writeDisabled}
+                          onClick={() => setMapTypes(map.id, map.recommended_care_types)}
+                          className="min-h-11 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-text-soft hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50"
+                        >
+                          {t.settings.calendarGroupingRecommended}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={saving || writeDisabled}
+                          onClick={() => setMapTypes(map.id, map.recurring_care_types)}
+                          className="min-h-11 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-text-soft hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50"
+                        >
+                          {t.settings.calendarGroupingAllRecurring}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={saving || writeDisabled}
+                          onClick={() => setMapTypes(map.id, [])}
+                          className="min-h-11 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-text-soft hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50"
+                        >
+                          {t.settings.calendarGroupingClear}
+                        </button>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2 mt-3">
+                        {GROUPABLE_CARE_TYPES.map((careType) => {
+                          const isSelected = selected.includes(careType)
+                          return (
+                            <button
+                              key={careType}
+                              type="button"
+                              aria-pressed={isSelected}
+                              disabled={saving || writeDisabled}
+                              onClick={() => setMapTypes(
+                                map.id,
+                                isSelected
+                                  ? selected.filter((type) => type !== careType)
+                                  : GROUPABLE_CARE_TYPES.filter((type) => (
+                                      type === careType || selected.includes(type)
+                                    )),
+                              )}
+                              className={`min-h-11 font-heading text-sm rounded-full border px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
+                                isSelected
+                                  ? 'bg-primary/10 border-primary text-primary font-medium'
+                                  : 'bg-surface border-border text-text-soft'
+                              } disabled:opacity-50`}
+                            >
+                              {t.careTypes[careType]}
+                            </button>
+                          )
+                        })}
+                      </div>
+
+                      <div className="mt-3 flex flex-col items-start gap-1 border-t border-border pt-3 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
+                        <div className="text-xs text-text-soft">
+                          {t.settings.calendarGroupingRecurring}: {' '}
+                          {map.recurring_care_types.length > 0
+                            ? map.recurring_care_types.map((careType) => t.careTypes[careType]).join(', ')
+                            : t.settings.calendarGroupingNone}
+                        </div>
+                        {similarCount > 1 && (
+                          <button
+                            type="button"
+                            disabled={saving || writeDisabled}
+                            onClick={() => copyToSimilarMaps(map.id)}
+                            className="inline-flex min-h-11 max-w-full items-center text-left text-xs font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50"
+                          >
+                            {map.map_type === 'indoor'
+                              ? t.settings.calendarGroupingCopyIndoor
+                              : t.settings.calendarGroupingCopyOutdoor}
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </article>
               )
             })}

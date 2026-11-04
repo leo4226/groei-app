@@ -769,6 +769,13 @@ export const auth = {
     if (res.token) saveToken(res.token)
     return res
   },
+  /** Ends every session of this account, this device's included. */
+  logoutAll: () => api<void>("POST", "/auth/logout-all"),
+  /** Deletes the caller's own account after re-checking the password. 400 =
+   * wrong password, 409 = an owner who still has other members, 429 = too
+   * many guesses. */
+  deleteAccount: (password: string) =>
+    api<{ household_deleted: boolean }>("POST", "/auth/delete-account", { body: { password } }),
 }
 
 export const dataExport = {

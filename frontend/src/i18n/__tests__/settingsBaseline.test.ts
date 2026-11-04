@@ -31,7 +31,6 @@ describe('settings i18n baseline', () => {
       'src/pages/settings/YouPanel.tsx',
       'src/pages/settings/HouseholdPanel.tsx',
       'src/pages/settings/NotificationsPanel.tsx',
-      'src/pages/settings/PlacesPanel.tsx',
       'src/pages/settings/AppDataPanel.tsx',
       'src/components/settings/SettingsGroup.tsx',
     ]
@@ -62,7 +61,7 @@ describe('settings catalog parity', () => {
   it('gives every accordion group a title in both languages', () => {
     const groups = [
       'groupYou', 'groupHousehold', 'groupCare',
-      'groupNotifications', 'groupPlaces', 'groupApp', 'groupAdmin',
+      'groupNotifications', 'groupConnections', 'groupApp', 'groupAdmin',
     ] as const
     for (const g of groups) {
       expect(nl.settings[g]).toBeTruthy()
@@ -75,13 +74,9 @@ describe('settings catalog parity', () => {
     // silently drops the name or count from the sentence.
     const interpolated = [
       ['memberCountMany', '{count}'],
-      ['locationCountMany', '{count}'],
       ['digestOnAt', '{time}'],
       ['editMember', '{name}'],
       ['removeConfirmNamed', '{name}'],
-      ['confirmDeleteLocationNamed', '{name}'],
-      ['deleteLocationNamed', '{name}'],
-      ['renameNamed', '{name}'],
       ['removeMemberNamed', '{name}'],
     ] as const
     for (const [key, token] of interpolated) {

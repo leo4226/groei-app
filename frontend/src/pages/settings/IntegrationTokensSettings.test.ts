@@ -49,6 +49,16 @@ describe('IntegrationTokensSettings', () => {
     vi.clearAllMocks()
   })
 
+  async function typeName(value: string) {
+    const input = container.querySelector('#integration-token-name') as HTMLInputElement
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
+    await act(async () => {
+      setter?.call(input, value)
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+      await flush()
+    })
+  }
+
   async function render(canEdit = true) {
     await act(async () => {
       root.render(createElement(LanguageProvider, null, createElement(IntegrationTokensSettings, { canEdit })))
@@ -65,6 +75,7 @@ describe('IntegrationTokensSettings', () => {
     await render()
     expect(container.textContent).toContain('Last used 30-10-2026')
 
+    await typeName('LAveren')
     await act(async () => {
       button(container, 'Create token').click()
       await flush()
@@ -90,6 +101,7 @@ describe('IntegrationTokensSettings', () => {
       checkbox.click()
       await flush()
     })
+    await typeName('LAveren')
     await act(async () => {
       button(container, 'Create token').click()
       await flush()
@@ -101,11 +113,18 @@ describe('IntegrationTokensSettings', () => {
   it('explains the limit on a 409', async () => {
     vi.mocked(integrations.create).mockRejectedValue(Object.assign(new Error('x'), { status: 409 }))
     await render()
+    await typeName('LAveren')
     await act(async () => {
       button(container, 'Create token').click()
       await flush()
     })
     expect(container.textContent).toContain('You already have 5 tokens')
+  })
+
+  it('starts with no name, so nobody else gets a token called LAveren', async () => {
+    await render()
+    expect((container.querySelector('#integration-token-name') as HTMLInputElement).value).toBe('')
+    expect(button(container, 'Create token').disabled).toBe(true)
   })
 
   it('is read-only for viewers', async () => {

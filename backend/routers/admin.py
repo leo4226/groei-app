@@ -11,7 +11,10 @@ from routers.plants import _seed_care_schedules
 from services.icon_catalog import load_catalog
 import logging
 logger = logging.getLogger(__name__)
-from services.account_deletion import delete_account as delete_account_rows
+from services.account_deletion import (
+    delete_account as delete_account_rows,
+    delete_household_if_empty as _delete_household_if_empty,
+)
 from services.admin_audit import log_admin_action
 from services.calendar_feed_cache import forget_account_feeds
 from services.db_transactions import database_transaction
@@ -342,72 +345,3 @@ async def _delete_account(db, target: dict):
     """Delete one account and everything owned by it personally — but NOT the
     household's shared data. target: {id, household_id, name}."""
     await delete_account_rows(db, target["id"])
-
-
-async def _delete_household_if_empty(db, household_id: int) -> bool:
-    """Cascade-delete the household's data and row, but only when no accounts
-    remain in it. Returns True if the household was deleted."""
-    remaining = await db.execute_fetchall(
-        "SELECT COUNT(*) as cnt FROM accounts WHERE household_id = ?", (household_id,)
-    )
-    if remaining[0]["cnt"] > 0:
-        return False
-    await _cascade_delete_household(db, household_id)
-    await db.execute("DELETE FROM households WHERE id = ?", (household_id,))
-    return True
-
-
-async def _cascade_delete_household(db, household_id: int):
-    """Delete all data belonging to a household (bottom-up FK-safe order)."""
-    # 1. NULL out user references
-    await db.execute(
-        "UPDATE care_schedules SET last_done_by = NULL "
-        "WHERE plant_id IN (SELECT id FROM plants WHERE household_id = ?)",
-        (household_id,),
-    )
-    await db.execute(
-        "UPDATE care_log SET done_by = NULL "
-        "WHERE plant_id IN (SELECT id FROM plants WHERE household_id = ?)",
-        (household_id,),
-    )
-    await db.execute(
-        "UPDATE garden_water_log SET watered_by = NULL "
-        "WHERE watered_by IN (SELECT id FROM users WHERE household_id = ?)",
-        (household_id,),
-    )
-    await db.execute(
-        "UPDATE garden_fertilize_log SET fertilized_by = NULL "
-        "WHERE fertilized_by IN (SELECT id FROM users WHERE household_id = ?)",
-        (household_id,),
-    )
-
-    # 2. Delete plants (cascades care_schedules + care_log)
-    await db.execute("DELETE FROM plants WHERE household_id = ?", (household_id,))
-
-    # 3. Delete map children
-    await db.execute(
-        "DELETE FROM weed_sightings WHERE map_id IN "
-        "(SELECT id FROM maps WHERE household_id = ?)",
-        (household_id,),
-    )
-    await db.execute(
-        "DELETE FROM zones WHERE map_id IN "
-        "(SELECT id FROM maps WHERE household_id = ?)",
-        (household_id,),
-    )
-    await db.execute(
-        "DELETE FROM ground_zones WHERE map_id IN "
-        "(SELECT id FROM maps WHERE household_id = ?)",
-        (household_id,),
-    )
-    await db.execute(
-        "DELETE FROM objects WHERE map_id IN "
-        "(SELECT id FROM maps WHERE household_id = ?)",
-        (household_id,),
-    )
-
-    # 4. Delete household-scoped tables
-    await db.execute("DELETE FROM household_invites WHERE household_id = ?", (household_id,))
-    await db.execute("DELETE FROM users WHERE household_id = ?", (household_id,))
-    await db.execute("DELETE FROM locations WHERE household_id = ?", (household_id,))
-    await db.execute("DELETE FROM maps WHERE household_id = ?", (household_id,))

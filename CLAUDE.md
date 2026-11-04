@@ -120,6 +120,8 @@ JWT-based auth (`jose` library, `sub=account_id`). Accounts belong to one Househ
 
 - **Sessions end on a password change.** Tokens carry the account's `session_version` (claim `sv`, absent = 0); a reset or change bumps it and every older token gets 401. `/auth/change-password` returns a fresh token for the device that made the change.
 - **Deleting an account keeps the household's history.** Since migration 0080 every FK to `users`/`accounts` has a delete rule: history (`care_log.done_by`, garden logs, …) is set NULL and shown as "former member"; per-account rows (reset links, invites, games) cascade. Use `services/account_deletion.py`.
+- **Members can sign out everywhere and delete their own account** (Settings → You). `POST /auth/logout-all` bumps `session_version` (this device too). `POST /auth/delete-account` re-checks the password; an owner gets 409 `owner_has_members` while anyone else is in the household (there is no ownership transfer yet), and the last member takes the household with them via `delete_household_if_empty` in `services/account_deletion.py` (shared with the admin delete).
+- **A viewer's own settings are theirs.** Password, sessions, account deletion, UI language, notification prefs and push subscriptions use `get_current_account`, not `require_editor`; they only write the caller's own rows. Name/avatar stay editor-gated because the household sees them.
 - **Care pushes are tracked per account** in `care_push_deliveries` (migration 0081), not on the shared schedule: each member is told once per due date, whatever the others got. `care_schedules.notified_for_due` is no longer used by the dispatch.
 
 ## Integrations (LAveren)

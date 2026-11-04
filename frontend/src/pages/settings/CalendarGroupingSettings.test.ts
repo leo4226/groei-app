@@ -94,8 +94,38 @@ describe('CalendarGroupingSettings', () => {
     })
   }
 
+  async function expandAll() {
+    await act(async () => {
+      for (const edit of Array.from(container.querySelectorAll('button'))
+        .filter((candidate) => candidate.textContent?.trim() === 'Edit')) {
+        edit.click()
+      }
+      await flush()
+    })
+  }
+
+  it('starts with one summary row per space and opens a space on Edit', async () => {
+    await renderSettings()
+
+    const backGarden = container.querySelector('[data-calendar-grouping-map="1"]') as HTMLElement
+    expect(backGarden.querySelector('[data-calendar-grouping-summary]')?.textContent).toBe('Grouped: Water')
+    expect(container.querySelector('[data-calendar-quick-setup]')).toBeNull()
+    expect(Array.from(backGarden.querySelectorAll('button')).map((b) => b.textContent?.trim())).toEqual(['Edit'])
+
+    await act(async () => {
+      buttonWithText(backGarden, 'Edit').click()
+      await flush()
+    })
+
+    expect(backGarden.querySelector('[data-calendar-quick-setup]')).not.toBeNull()
+    expect(buttonWithText(backGarden, 'Done').getAttribute('aria-expanded')).toBe('true')
+    // The other spaces stay closed.
+    expect(container.querySelectorAll('[data-calendar-quick-setup]')).toHaveLength(1)
+  })
+
   it('shows every space with its identity and independent selected care types', async () => {
     await renderSettings()
+    await expandAll()
 
     expect(container.textContent).toContain('Care planning')
     expect(container.textContent).toContain('Shared with your household')
@@ -116,6 +146,7 @@ describe('CalendarGroupingSettings', () => {
 
   it('uses semantic card headings and quiet sentence-case metadata', async () => {
     await renderSettings()
+    await expandAll()
 
     const title = container.querySelector('[data-calendar-grouping-title]')
     const sharingStatus = container.querySelector('[data-calendar-sharing-status]')
@@ -135,6 +166,7 @@ describe('CalendarGroupingSettings', () => {
 
   it('applies recommended, recurring, and clear presets to only one map', async () => {
     await renderSettings()
+    await expandAll()
     const livingRoom = container.querySelector('[data-calendar-grouping-map="2"]') as HTMLElement
 
     await act(async () => {
@@ -170,6 +202,7 @@ describe('CalendarGroupingSettings', () => {
 
   it('copies one map rule only to maps with the same indoor/outdoor identity', async () => {
     await renderSettings()
+    await expandAll()
     const backGarden = container.querySelector('[data-calendar-grouping-map="1"]') as HTMLElement
 
     await act(async () => {
@@ -187,6 +220,7 @@ describe('CalendarGroupingSettings', () => {
   it('restores the previous selection and shows a localized error when saving fails', async () => {
     vi.mocked(household.updateCalendarGrouping).mockRejectedValueOnce(new Error('offline'))
     await renderSettings()
+    await expandAll()
     const backGarden = container.querySelector('[data-calendar-grouping-map="1"]') as HTMLElement
 
     await act(async () => {
