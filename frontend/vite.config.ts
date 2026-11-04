@@ -59,6 +59,15 @@ export default defineConfig({
           if (id.includes('node_modules/react-router')) {
             return 'vendor-router'
           }
+          // The map library (~800 KB) and the QR code renderer are used by one
+          // lazily loaded screen each (Atlas expedition map, game host). In
+          // vendor-other they were preloaded by index.html on every page.
+          if (id.includes('node_modules/maplibre-gl') || id.includes('node_modules/@maplibre')) {
+            return 'vendor-maplibre'
+          }
+          if (id.includes('node_modules/qrcode')) {
+            return 'vendor-qrcode'
+          }
           // Everything else from node_modules
           if (id.includes('node_modules/')) {
             return 'vendor-other'

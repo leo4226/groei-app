@@ -27,6 +27,10 @@ Verify features in a desktop browser. Mobile testing not required during develop
 | Backend | FastAPI + Python + asyncpg (Neon PostgreSQL) |
 | PWA | vite-plugin-pwa |
 
+### Instant start-up (device cache)
+
+`store/deviceCache.ts` keeps the last-loaded household data on the device (localStorage, keyed per account + household from the token): the store's boot data (`me`, users, locations, maps, plants) and each map's `useMapData` payload. The app draws that copy at once and refreshes it quietly (`load({ quiet: true })`, `isStale`). It is wiped on sign-out, on a 401 and in `resetForNewSession`. **When a cached shape changes incompatibly, bump `VERSION` in `deviceCache.ts`.** Don't add data to it that a viewer of this device must not see after signing out without going through `clearToken()`.
+
 ### Database
 
 - **Postgres only** — SQLite was dropped; the backend requires `DATABASE_URL` (asyncpg) even for local dev. Set in `backend/.env`. Leftover `backend/*.db` SQLite files are unused.

@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import type { MapDetail, MapPlant, MapObject, GroundZone, SecondaryMarker } from '../types'
 import { maps, groundZones as groundZonesApi, plants as plantsApi, objects as objectsApi } from '../api/client'
+import { readCache, writeCache } from '../store/deviceCache'
 
 export interface RestoreInfo {
   label: string
@@ -22,13 +23,47 @@ export interface UseMapDataReturn {
   duplicate: (plantId: number) => Promise<void>
 }
 
+/** One map as last loaded, kept on the device so it draws at once next time. */
+interface CachedMap {
+  map: MapDetail
+  plants: MapPlant[]
+  objects: MapObject[]
+  secondaryMarkers: SecondaryMarker[]
+  groundZones: GroundZone[]
+}
+
+const mapCacheName = (slug: string) => `map:${slug}`
+
+function readCachedMap(slug: string): CachedMap | null {
+  const cached = readCache<CachedMap>(mapCacheName(slug))
+  return cached && cached.map && Array.isArray(cached.plants) ? cached : null
+}
+
 export function useMapData(slug: string): UseMapDataReturn {
-  const [map, setMap] = useState<MapDetail | null>(null)
-  const [plants, setPlants] = useState<MapPlant[]>([])
-  const [objects, setObjects] = useState<MapObject[]>([])
-  const [secondaryMarkers, setSecondaryMarkers] = useState<SecondaryMarker[]>([])
-  const [groundZones, setGroundZones] = useState<GroundZone[]>([])
+  // Start from the device copy when there is one: the map is on screen
+  // immediately and the request below only brings it up to date.
+  const [initial] = useState(() => readCachedMap(slug))
+  const [map, setMap] = useState<MapDetail | null>(initial?.map ?? null)
+  const [plants, setPlants] = useState<MapPlant[]>(initial?.plants ?? [])
+  const [objects, setObjects] = useState<MapObject[]>(initial?.objects ?? [])
+  const [secondaryMarkers, setSecondaryMarkers] = useState<SecondaryMarker[]>(initial?.secondaryMarkers ?? [])
+  const [groundZones, setGroundZones] = useState<GroundZone[]>(initial?.groundZones ?? [])
   const [loading, setLoading] = useState(true)
+
+  // Moving to another map reuses this hook (same page component): show that
+  // map's device copy straight away instead of the previous map until its
+  // request returns. Adjusting state during render is React's pattern for
+  // resetting state when a prop changes.
+  const [shownSlug, setShownSlug] = useState(slug)
+  if (shownSlug !== slug) {
+    const cached = readCachedMap(slug)
+    setShownSlug(slug)
+    setMap(cached?.map ?? null)
+    setPlants(cached?.plants ?? [])
+    setObjects(cached?.objects ?? [])
+    setSecondaryMarkers(cached?.secondaryMarkers ?? [])
+    setGroundZones(cached?.groundZones ?? [])
+  }
 
   const refresh = useCallback(async () => {
     setLoading(true)
@@ -43,6 +78,13 @@ export function useMapData(slug: string): UseMapDataReturn {
       setObjects(items.objects)
       setSecondaryMarkers(items.secondary_markers ?? [])
       setGroundZones(zones)
+      writeCache(mapCacheName(slug), {
+        map: mapDetail,
+        plants: items.plants,
+        objects: items.objects,
+        secondaryMarkers: items.secondary_markers ?? [],
+        groundZones: zones,
+      } satisfies CachedMap)
     } catch (err) {
       console.error('Failed to load map data:', err)
     } finally {

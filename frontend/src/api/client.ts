@@ -1,4 +1,5 @@
 import type { User, Location, Plant, PlantCreateInput, CareScheduleInput, CareLogEntry, RecentLogEntry, MapInfo, MapDetail, MapPlant, MapObject, MapItems, SecondaryMarker, ObjectCreateInput, GroundZone, PlantIcon, IconSyncResult, IconGapReport, PlantAlert, AlertSummary, PlantFactOut, RecommendationsOut, GardenSuggestionsOut, PublicGardenSummary, PublicGardenDetail } from '../types'
+import { clearDeviceCache } from '../store/deviceCache'
 import { indexIconUrls } from '../utils/icons'
 import { withNetworkRetry } from './retry'
 import { saveToken } from './auth'
@@ -62,6 +63,7 @@ function authHeaders(): Record<string, string> {
 async function handleAuthErrors(res: Response): Promise<void> {
   if (res.status === 401) {
     localStorage.removeItem('floreren-token')
+    clearDeviceCache()
     window.location.href = '/login'
     throw Object.assign(new Error('Session expired — redirecting to login'), { status: res.status })
   }
@@ -654,13 +656,36 @@ export const calendar = {
   waterOutlook: () => api<WaterOutlook>('GET', '/calendar/water-outlook'),
 }
 
-export const icons = {
-  catalog: async (): Promise<PlantIcon[]> => {
-    const entries = await api<PlantIcon[]>('GET', '/icon-catalog')
+// The catalog (~70 KB) changes only when an admin syncs icons, but the App
+// primes it and several pages ask again on mount. One request serves them all
+// for a few minutes; a failure is not remembered, so the next call retries.
+const ICON_CATALOG_TTL_MS = 10 * 60 * 1000
+let iconCatalogRequest: { at: number; promise: Promise<PlantIcon[]> } | null = null
+
+function loadIconCatalog(): Promise<PlantIcon[]> {
+  if (iconCatalogRequest && Date.now() - iconCatalogRequest.at < ICON_CATALOG_TTL_MS) {
+    return iconCatalogRequest.promise
+  }
+  const promise = api<PlantIcon[]>('GET', '/icon-catalog').then((entries) => {
     indexIconUrls(entries)
     return entries.slice().sort((a, b) => a.name.localeCompare(b.name))
+  })
+  const request = { at: Date.now(), promise }
+  iconCatalogRequest = request
+  promise.catch(() => {
+    if (iconCatalogRequest === request) iconCatalogRequest = null
+  })
+  return promise
+}
+
+export const icons = {
+  /** Each caller gets its own copy, so sorting or filtering it is safe. */
+  catalog: async (): Promise<PlantIcon[]> => (await loadIconCatalog()).slice(),
+  sync: async (): Promise<IconSyncResult> => {
+    const result = await api<IconSyncResult>('POST', '/icon-catalog/sync')
+    iconCatalogRequest = null
+    return result
   },
-  sync:    () => api<IconSyncResult>('POST', '/icon-catalog/sync'),
   gaps:    () => api<IconGapReport>('GET', '/icon-catalog/gaps'),
   request: (plantId: number) => api<{ status: string; plant_id: number }>('PATCH', `/icon-catalog/request/${plantId}`),
 }
