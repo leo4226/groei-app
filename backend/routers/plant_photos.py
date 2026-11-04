@@ -3,6 +3,7 @@
 plants.photo_path is derived state — always the newest journal photo's URL —
 so plant cards, the map view, and the dashboard keep working unchanged.
 """
+import logging
 import time
 from datetime import date, datetime, timedelta
 
@@ -18,6 +19,8 @@ from services.storage import build_storage_from_env
 from services.thumbnails import IMMUTABLE_CACHE, make_thumbnail, thumb_key
 from services.local_time import local_today
 from services.uploads import storage_key
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["plant-photos"])
 
@@ -92,6 +95,7 @@ def _store_thumbnail(storage, key: str, data: bytes) -> str | None:
     try:
         return storage.put(thumb_key(key), thumb, content_type="image/jpeg", cache_control=IMMUTABLE_CACHE)
     except Exception:
+        logger.warning("Could not store the thumbnail for %s", key, exc_info=True)
         return None
 
 
