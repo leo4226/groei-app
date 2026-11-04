@@ -43,6 +43,8 @@ export interface Plant {
   map_x: number | null
   map_y: number | null
   photo_path: string | null
+  /** ~480 px thumbnail of photo_path for lists and sheets; null = use photo_path. */
+  photo_thumb_path?: string | null
   acquired_date: string | null
   pot_size_cm: number | null
   container_id: number | null
@@ -363,6 +365,8 @@ export interface MapPlant {
   map_x: number
   map_y: number
   photo_path: string | null
+  /** ~480 px thumbnail of photo_path for lists and sheets; null = use photo_path. */
+  photo_thumb_path?: string | null
   container_id: number | null
   ground_zone_id: string | null
   display_radius_cm: number | null
@@ -884,6 +888,8 @@ export interface PlantPhoto {
   id: number
   plant_id: number
   url: string
+  /** ~480 px thumbnail for the grid; null = use url. */
+  thumb_url?: string | null
   note: string | null
   taken_at: string
   care_log_id: number | null

@@ -368,7 +368,7 @@ export default function PlantQuickSheet({
                 }}
               >
                 {plant.photo_path ? (
-                  <img src={plant.photo_path} alt={displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <img src={plant.photo_thumb_path ?? plant.photo_path} alt={displayName} decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : iconUrl ? (
                   <img src={iconUrl} alt="" style={{ width: '72%', height: '72%', objectFit: 'contain' }} />
                 ) : (

@@ -229,7 +229,7 @@ async def _fetch_weather_safely(db=None, household_id: int | None = None) -> dic
     temp_data = await _or_none("temp", household_id, get_temp_data(db))
     rain_data = await _or_none("rain", household_id, get_rain_data(db))
     last_watered = (
-        await _or_none("last_watered", household_id, get_last_garden_watered(household_id))
+        await _or_none("last_watered", household_id, get_last_garden_watered(household_id, db))
         if household_id is not None else None
     )
     forecast_days_by_map = await _or_none(

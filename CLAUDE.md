@@ -31,6 +31,11 @@ Verify features in a desktop browser. Mobile testing not required during develop
 
 `store/deviceCache.ts` keeps the last-loaded household data on the device (localStorage, keyed per account + household from the token): the store's boot data (`me`, users, locations, maps, plants) and each map's `useMapData` payload. The app draws that copy at once and refreshes it quietly (`load({ quiet: true })`, `isStale`). It is wiped on sign-out, on a 401 and in `resetForNewSession`. **When a cached shape changes incompatibly, bump `VERSION` in `deviceCache.ts`.** Don't add data to it that a viewer of this device must not see after signing out without going through `clearToken()`.
 
+### Weather and photos never hold a page up
+
+- **Weather** (`services/environment.py`, `services/weather_forecast.py`): one shared fetch per source, a 5 s timeout, and a 2-minute backoff after a failure. Rain and temperature are served from memory at once and refreshed in the background once older than 50 min (stale is fine for care advice). The per-map forecast is refreshed ahead the same way but **never served as fresh once expired**: warnings may only lean on a current forecast (`get_usable_forecast_days`). Map routers run the three lookups together (`_care_context` in `routers/maps.py`).
+- **Photos**: uploads store a ~480 px JPEG beside the original (`services/thumbnails.py`); `plant_photos.thumb_url` and `plants.photo_thumb_path` (migration 0083) hold it, NULL meaning "use the original". Anything that changes `plants.photo_path` must keep `photo_thumb_path` in step (`_sync_thumbnail` in `routers/plant_photos.py`). Photo and thumbnail keys are unique and never rewritten, so they are stored with a one-year immutable `Cache-Control`; never pass that header for a key that gets overwritten. Older photos get thumbnails from the admin job "Make photo thumbnails".
+
 ### Database
 
 - **Postgres only** — SQLite was dropped; the backend requires `DATABASE_URL` (asyncpg) even for local dev. Set in `backend/.env`. Leftover `backend/*.db` SQLite files are unused.

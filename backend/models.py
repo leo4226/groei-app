@@ -213,6 +213,8 @@ class PlantOut(BaseModel):
     map_x: float | None = None
     map_y: float | None = None
     photo_path: str | None = None
+    #: ~480 px thumbnail of photo_path for lists and sheets; None = use photo_path.
+    photo_thumb_path: str | None = None
     acquired_date: date | None = None
     pot_size_cm: int | None = None
     last_repotted: date | None = None
@@ -527,6 +529,8 @@ class MapPlantOut(BaseModel):
     map_x: float
     map_y: float
     photo_path: str | None = None
+    #: ~480 px thumbnail of photo_path for lists and sheets; None = use photo_path.
+    photo_thumb_path: str | None = None
     container_id: int | None = None
     ground_zone_id: str | None = None
     display_radius_cm: int | None = None

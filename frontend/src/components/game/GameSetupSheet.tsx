@@ -519,7 +519,9 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose, canEdit = true
                   >
                     {p.photo_path ? (
                       <img
-                        src={p.photo_path}
+                        src={p.photo_thumb_path ?? p.photo_path}
+                        loading="lazy"
+                        decoding="async"
                         alt={displayName}
                         className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
                       />

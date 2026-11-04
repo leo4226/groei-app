@@ -822,6 +822,7 @@ export const admin = {
 }
 
 export const adminPanel = {
+  photoThumbnailsPreview: () => api<{ total_photos: number; missing_thumbnail: number }>('GET', '/admin-panel/photo-thumbnails/preview'),
   overview:       () => api<AdminOverview>('GET', '/admin-panel/overview'),
   growthMetrics:  (days: number = 30) => api<AdminGrowthMetrics>('GET', '/admin-panel/growth-metrics', { params: { days: String(days) } }),
   health:         () => api<AdminSystemHealth>('GET', '/admin-panel/health'),

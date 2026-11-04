@@ -114,6 +114,8 @@ export default function WeedSightingsSection() {
               {sighting.photo_url ? (
                 <img
                   src={sighting.photo_url}
+                  loading="lazy"
+                  decoding="async"
                   alt={sighting.weed_name}
                   style={{ width: 52, height: 52, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }}
                 />

@@ -15,14 +15,31 @@ class Storage:
     def public_url(self, key: str) -> str:
         return f"{self.public_base_url}/{key.lstrip('/')}"
 
-    def put(self, key: str, data: bytes, content_type: str) -> str:
+    def put(self, key: str, data: bytes, content_type: str, cache_control: str | None = None) -> str:
+        """Store an object. `cache_control` only for keys that are never
+        rewritten (see services.thumbnails.IMMUTABLE_CACHE): a long cache on a
+        key that is overwritten later would keep showing the old file."""
+        extra = {"CacheControl": cache_control} if cache_control else {}
         self._client.put_object(
             Bucket=self.bucket,
             Key=key,
             Body=data,
             ContentType=content_type,
+            **extra,
         )
         return self.public_url(key)
+
+    def set_cache_control(self, key: str, content_type: str, cache_control: str) -> None:
+        """Give an existing object new caching headers (copy onto itself)."""
+        key = key.lstrip("/")
+        self._client.copy_object(
+            Bucket=self.bucket,
+            Key=key,
+            CopySource={"Bucket": self.bucket, "Key": key},
+            MetadataDirective="REPLACE",
+            ContentType=content_type,
+            CacheControl=cache_control,
+        )
 
     def get(self, key: str) -> bytes | None:
         """Return an object's bytes, or None if it doesn't exist or the
