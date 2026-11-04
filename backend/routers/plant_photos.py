@@ -8,12 +8,14 @@ from datetime import date, datetime, timedelta
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, Field
+from starlette.concurrency import run_in_threadpool
 
 from database import db_dep, get_db as _get_db
 from auth import get_current_account, require_editor
 from services.photo_check import check_photo
 from services.scheduling import calculate_next_due
 from services.storage import build_storage_from_env
+from services.thumbnails import IMMUTABLE_CACHE, make_thumbnail, thumb_key
 from services.local_time import local_today
 from services.uploads import storage_key
 
@@ -27,6 +29,9 @@ class PhotoOut(BaseModel):
     id: int
     plant_id: int
     url: str
+    #: ~480 px JPEG for lists and grids; None (older photo, or rendering
+    #: failed) means use `url`.
+    thumb_url: str | None = None
     note: str | None = None
     taken_at: str
     care_log_id: int | None = None
@@ -64,16 +69,30 @@ async def _owned_plant(db, plant_id: int, household_id: int) -> dict:
 
 
 async def _sync_thumbnail(db, plant_id: int) -> None:
-    """Point plants.photo_path at the newest journal photo (NULL when empty)."""
+    """Point plants.photo_path at the newest journal photo, and
+    plants.photo_thumb_path at its thumbnail (both NULL when empty)."""
     rows = await db.execute_fetchall(
-        "SELECT url FROM plant_photos WHERE plant_id = ? ORDER BY taken_at DESC, id DESC LIMIT 1",
+        "SELECT url, thumb_url FROM plant_photos WHERE plant_id = ? ORDER BY taken_at DESC, id DESC LIMIT 1",
         (plant_id,),
     )
     url = rows[0]["url"] if rows else None
+    thumb = rows[0]["thumb_url"] if rows else None
     await db.execute(
-        "UPDATE plants SET photo_path = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        (url, plant_id),
+        "UPDATE plants SET photo_path = ?, photo_thumb_path = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        (url, thumb, plant_id),
     )
+
+
+def _store_thumbnail(storage, key: str, data: bytes) -> str | None:
+    """Render and store the thumbnail of a just-stored photo. Never fails the
+    upload: without a thumbnail the app shows the full photo, as before."""
+    thumb = make_thumbnail(data)
+    if thumb is None:
+        return None
+    try:
+        return storage.put(thumb_key(key), thumb, content_type="image/jpeg", cache_control=IMMUTABLE_CACHE)
+    except Exception:
+        return None
 
 
 def _parse_taken_at(value: str) -> datetime:
@@ -97,7 +116,8 @@ def _iso_t(value) -> str:
 
 def _row_to_out(row) -> PhotoOut:
     return PhotoOut(
-        id=row["id"], plant_id=row["plant_id"], url=row["url"], note=row["note"],
+        id=row["id"], plant_id=row["plant_id"], url=row["url"],
+        thumb_url=dict(row).get("thumb_url"), note=row["note"],
         taken_at=_iso_t(row["taken_at"]), care_log_id=row["care_log_id"],
         species_mismatch=bool(row["species_mismatch"]),
     )
@@ -177,16 +197,20 @@ async def upload_plant_photo(
     key = storage_key(f"photos/{account['household_id']}/{plant_id}")
     storage = build_storage_from_env()
     try:
-        url = storage.put(key, data, content_type=file.content_type or "image/jpeg")
+        url = storage.put(
+            key, data, content_type=file.content_type or "image/jpeg",
+            cache_control=IMMUTABLE_CACHE,
+        )
     except Exception as exc:
         raise HTTPException(502, f"Photo storage failed: {exc}")
+    thumb_url = await run_in_threadpool(_store_thumbnail, storage, key, data)
 
     ts = _parse_taken_at(taken_at) if taken_at else datetime.now().replace(microsecond=0)
     try:
         cursor = await db.execute(
-            """INSERT INTO plant_photos (plant_id, household_id, r2_key, url, note, taken_at, care_log_id)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
-            (plant_id, account["household_id"], key, url, note, ts, care_log_id),
+            """INSERT INTO plant_photos (plant_id, household_id, r2_key, url, thumb_url, note, taken_at, care_log_id)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (plant_id, account["household_id"], key, url, thumb_url, note, ts, care_log_id),
         )
         photo_id = cursor.lastrowid
         await _sync_thumbnail(db, plant_id)
@@ -196,10 +220,11 @@ async def upload_plant_photo(
         raise
     except Exception:
         # DB write failed after the R2 put — best-effort cleanup, then surface.
-        try:
-            storage.delete(key)
-        except Exception:
-            pass
+        for orphan in (key, thumb_key(key)) if thumb_url else (key,):
+            try:
+                storage.delete(orphan)
+            except Exception:
+                pass
         raise
 
     background.add_task(
@@ -346,10 +371,12 @@ async def delete_photo(photo_id: int,
                        db=Depends(db_dep), account=Depends(require_editor)):
     photo = await _owned_photo(db, photo_id, account["household_id"])
     storage = build_storage_from_env()
-    try:
-        storage.delete(photo["r2_key"])
-    except Exception:
-        pass  # R2 orphan is acceptable; the DB row must go regardless
+    keys = [photo["r2_key"]] + ([thumb_key(photo["r2_key"])] if photo.get("thumb_url") else [])
+    for key in keys:
+        try:
+            storage.delete(key)
+        except Exception:
+            pass  # R2 orphan is acceptable; the DB row must go regardless
     await db.execute("DELETE FROM plant_photos WHERE id = ?", (photo_id,))
     await _sync_thumbnail(db, photo["plant_id"])
     await db.commit()

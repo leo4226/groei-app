@@ -77,6 +77,7 @@ SCHEMA = """
         map_x REAL,
         map_y REAL,
         photo_path TEXT,
+        photo_thumb_path TEXT,
         acquired_date TEXT,
         pot_size_cm INTEGER,
         last_repotted TEXT,

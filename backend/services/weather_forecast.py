@@ -6,6 +6,7 @@ an expired entry remains available as an explicitly stale fallback.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 logger = logging.getLogger(__name__)
 from datetime import datetime, timedelta, timezone
@@ -16,6 +17,12 @@ import httpx
 
 OPEN_METEO_BASE = "https://api.open-meteo.com/v1/forecast"
 CACHE_TTL = timedelta(hours=1)
+# Renew in the background from here on, so a garden in use never sees expiry.
+REFRESH_AHEAD = timedelta(minutes=50)
+# A failed fetch is not retried for this long: every request used to retry it,
+# each waiting out the timeout, for as long as Open-Meteo was down.
+FAILURE_BACKOFF = timedelta(minutes=2)
+FETCH_TIMEOUT_S = 5
 
 _DAILY_FIELDS = (
     "weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,"
@@ -37,6 +44,9 @@ _EMPTY_DAILY = {
     "soil_moisture_0_to_7cm_mean": [],
 }
 _cache: dict[str, dict[str, Any]] = {}
+_inflight: dict[str, asyncio.Task] = {}
+_last_failure: dict[str, datetime] = {}
+_background: set[asyncio.Task] = set()
 
 
 _CACHE_MAX_ENTRIES = 512
@@ -49,6 +59,8 @@ def forecast_cache_key(lat: float, lon: float) -> str:
 
 def clear_forecast_cache() -> None:
     _cache.clear()
+    _inflight.clear()
+    _last_failure.clear()
 
 
 def _value(values: list, index: int, default: float = 0.0) -> float:
@@ -146,19 +158,7 @@ def _unavailable(lat: float, lon: float) -> dict:
     }
 
 
-async def get_map_forecast(
-    lat: float,
-    lon: float,
-    *,
-    now: datetime | None = None,
-) -> dict:
-    """Return history + forecast for one map, with fail-soft stale caching."""
-    observed_at = now or datetime.now(timezone.utc)
-    key = forecast_cache_key(lat, lon)
-    entry = _cache.get(key)
-    if entry and observed_at - entry["fetched_at"] < CACHE_TTL:
-        return entry["data"]
-
+async def _fetch_forecast(lat: float, lon: float, key: str, observed_at: datetime) -> dict | None:
     params = {
         "latitude": lat,
         "longitude": lon,
@@ -169,7 +169,7 @@ async def get_map_forecast(
         "forecast_days": 7,
     }
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
+        async with httpx.AsyncClient(timeout=FETCH_TIMEOUT_S) as client:
             response = await client.get(OPEN_METEO_BASE, params=params)
             response.raise_for_status()
             data = _normalize(
@@ -180,15 +180,61 @@ async def get_map_forecast(
             )
     except Exception:
         logger.warning("Weather forecast fetch failed for %.2f,%.2f", lat, lon)
-        if entry:
-            return {**entry["data"], "stale": True}
-        return _unavailable(lat, lon)
+        _last_failure[key] = datetime.now(timezone.utc)
+        return None
 
+    _last_failure.pop(key, None)
     _cache[key] = {"fetched_at": observed_at, "data": data}
     # Bounded: one entry per distinct garden location is the steady state, so a
     # cap far above that only ever trims stale coordinates (oldest first).
     while len(_cache) > _CACHE_MAX_ENTRIES:
         _cache.pop(min(_cache, key=lambda k: _cache[k]["fetched_at"]), None)
+    return data
+
+
+def _start_fetch(lat: float, lon: float, key: str, observed_at: datetime) -> asyncio.Task | None:
+    """The one in-flight fetch for this location, started if needed; None while
+    a recent failure is backing off."""
+    task = _inflight.get(key)
+    if task is not None and not task.done():
+        return task
+    failed_at = _last_failure.get(key)
+    if failed_at is not None and datetime.now(timezone.utc) - failed_at < FAILURE_BACKOFF:
+        return None
+    task = asyncio.get_running_loop().create_task(_fetch_forecast(lat, lon, key, observed_at))
+    _inflight[key] = task
+    _background.add(task)
+    task.add_done_callback(_background.discard)
+    return task
+
+
+async def get_map_forecast(
+    lat: float,
+    lon: float,
+    *,
+    now: datetime | None = None,
+) -> dict:
+    """Return history + forecast for one map, with fail-soft stale caching.
+
+    A forecast is only "fresh" for an hour, and warnings may only lean on a
+    fresh one, so an expired entry is not served as current. Instead the entry
+    is renewed in the background from REFRESH_AHEAD on: a garden in use never
+    reaches expiry, and its map no longer waits on Open-Meteo once an hour.
+    """
+    observed_at = now or datetime.now(timezone.utc)
+    key = forecast_cache_key(lat, lon)
+    entry = _cache.get(key)
+    if entry and observed_at - entry["fetched_at"] < CACHE_TTL:
+        if observed_at - entry["fetched_at"] >= REFRESH_AHEAD:
+            _start_fetch(lat, lon, key, datetime.now(timezone.utc))
+        return entry["data"]
+
+    task = _start_fetch(lat, lon, key, observed_at)
+    data = await asyncio.shield(task) if task is not None else None
+    if data is None:
+        if entry:
+            return {**entry["data"], "stale": True}
+        return _unavailable(lat, lon)
     return data
 
 

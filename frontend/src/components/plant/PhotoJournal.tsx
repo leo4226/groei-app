@@ -127,7 +127,7 @@ export default function PhotoJournal({ plantId, refreshKey = 0, reminder }: Prop
           {photos.map((p, i) => (
             <button key={p.id} className="relative aspect-square overflow-hidden rounded-lg"
                     onClick={() => setViewer(i)}>
-              <img src={p.url} loading="lazy" alt={p.note ?? ''}
+              <img src={p.thumb_url ?? p.url} loading="lazy" decoding="async" alt={p.note ?? ''}
                    className="h-full w-full object-cover" />
               {p.care_log_id != null && (
                 <span title={t.photoJournal.careBadgeHint}

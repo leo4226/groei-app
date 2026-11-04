@@ -1366,6 +1366,7 @@ function jobResultSummary(kind: string, job: AdminJob): string {
   if (kind === 'backfill_names') return `✓ ${r.updated ?? 0} species named · ${r.skipped ?? 0} skipped out of ${r.processed ?? 0} candidates`
   if (kind === 'backfill_species') return `✓ ${r.linked ?? 0} plants linked · ${r.failed ?? 0} failed out of ${r.processed ?? 0}`
   if (kind === 'backfill_photo_embeddings') return `\u2713 ${r.embedded ?? 0} embedded out of ${r.checked ?? 0} checked \u00b7 ${r.anchored ?? 0} references added (${r.adopted ?? 0} adopted from photos already embedded)`
+  if (kind === 'backfill_photo_thumbnails') return `\u2713 ${r.created ?? 0} thumbnails made \u00b7 ${r.skipped ?? 0} skipped out of ${r.found ?? 0} photos`
   if (kind === 'backfill_plant_types') return `✓ ${r.updated ?? 0} updated · ${r.skipped ?? 0} skipped out of ${r.found ?? 0} active candidates`
   if (kind === 'generate_icons') return iconJobSummary(r)
   return '✓ Done'
@@ -2048,6 +2049,7 @@ function ToolsView() {
   const [tp, setTp] = useState<{ active_total: number; missing_thresholds: number } | null>(null)
   const [sp, setSp] = useState<{ total_with_thresholds: number; missing_schedules: number } | null>(null)
   const [pe, setPe] = useState<{ total_photos: number; missing_embedding: number; unanchored: number } | null>(null)
+  const [pt, setPt] = useState<{ total_photos: number; missing_thumbnail: number } | null>(null)
   const [fpAll, setFpAll] = useState<AdminBackfillFactsPreview | null>(null)
   const [fpInUse, setFpInUse] = useState<AdminBackfillFactsPreview | null>(null)
   const [npAll, setNpAll] = useState<AdminBackfillNamesPreview | null>(null)
@@ -2078,6 +2080,7 @@ function ToolsView() {
     admin.thresholdsPreview().then(setTp).catch(() => {})
     admin.schedulesPreview().then(setSp).catch(() => {})
     admin.photoEmbeddingsPreview().then(setPe).catch(() => {})
+    adminPanel.photoThumbnailsPreview().then(setPt).catch(() => {})
     admin.backfillPlantTypesPreview().then(setPp).catch(() => {})
     adminPanel.backfillSpeciesPreview().then(setSpLink).catch(() => {})
     adminPanel.listJobs(20).then(j => { setRecentJobs(j); setRecentLoading(false) }).catch(() => setRecentLoading(false))
@@ -2313,6 +2316,9 @@ function ToolsView() {
         {simpleTool('backfill_photo_embeddings', 'Re-embed journal photos',
           'Two repairs. Photos with no embedding (taken while the worker was asleep) are refetched and embedded \u2014 that part needs the worker awake and stops on the first unreachable call. Photos that ARE embedded but never became a species reference, because the plant was linked to its species after the photo was taken, are adopted as references \u2014 that part needs no worker and cannot be fixed any other way.',
           pe ? `${pe.missing_embedding} of ${pe.total_photos} photos have no embedding \u00b7 ${pe.unanchored} embedded but not yet a species reference` : 'Loading\u2026')}
+        {simpleTool('backfill_photo_thumbnails', 'Make photo thumbnails',
+          'Gives every journal photo uploaded before thumbnails existed a small (~480 px) copy, so lists and sheets stop loading the full photo, and marks the originals cacheable for a year. All households. Safe to run again: it only picks up photos that still have no thumbnail. A photo missing from storage is skipped and keeps showing the original.',
+          pt ? `${pt.missing_thumbnail} of ${pt.total_photos} photos have no thumbnail` : 'Loading\u2026')}
         {simpleTool('backfill_plant_types', 'Backfill plant types',
           'Set plant_type from icon manifest cat field for active plants where it is NULL. Archived plants are ignored.',
           pp ? `${pp.missing_plant_type} of ${pp.total_active_plants} active plants need a type` : 'Loading…')}
@@ -2395,6 +2401,7 @@ const ACTION_LABEL: Record<string, string> = {
   backfill_thresholds:             'Backfill thresholds',
   backfill_care_schedules:         'Backfill schedules',
   backfill_photo_embeddings:       'Re-embed photos',
+  backfill_photo_thumbnails:       'Photo thumbnails',
   backfill_facts:                  'Backfill facts',
   generate_icons:                  'Generate icons',
   patch_species:                   'Edit species',

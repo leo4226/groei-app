@@ -6,7 +6,16 @@ Public API:
 
 Both are async, cached in DB (1-hour TTL) + in-memory hot cache, and fall back
 to a stable empty shape on network errors so callers never need to handle exceptions.
+
+They never make a page wait for Open-Meteo once a value is known: data older
+than REFRESH_AHEAD is served while one background request refreshes it, and
+data past its TTL is served as-is (rain and temperature an hour or two old are
+still right for care advice) while it refreshes. Only a cold process with no
+cache anywhere waits, and then for at most FETCH_TIMEOUT_S. A failed fetch is
+not retried for FAILURE_BACKOFF: it used to be retried, with a 10-second
+timeout, by every request while Open-Meteo was down.
 """
+import asyncio
 import json
 from datetime import datetime, timedelta, timezone
 import logging
@@ -31,6 +40,9 @@ OPEN_METEO_TEMP_URL = (
 )
 
 CACHE_TTL = timedelta(hours=1)
+REFRESH_AHEAD = timedelta(minutes=50)
+FAILURE_BACKOFF = timedelta(minutes=2)
+FETCH_TIMEOUT_S = 5
 
 _RAIN_FALLBACK = {"days": [], "total_7day_mm": 0.0, "total_14day_mm": 0.0, "assessment": "unknown"}
 _TEMP_FALLBACK = {"days": [], "avg_max_7day": 0.0, "assessment": "unknown"}
@@ -102,38 +114,7 @@ def _temp_assessment(avg_max: float) -> str:
     return "cold"
 
 
-async def get_rain_data(db=None) -> dict:
-    """Fetch (or return cached) 14-day rainfall data with both 7d and 14d totals.
-
-    Caching layers (checked in order):
-      1. In-memory (hot cache, 1-hour TTL)
-      2. DB (weather_cache table, survives restarts, 1-hour TTL)
-      3. Open-Meteo API → stored in both caches
-    """
-    global _rain_cache
-    now = datetime.now(timezone.utc)
-
-    # Layer 1: in-memory hot cache
-    if _rain_cache.get("fetched_at") and (now - _rain_cache["fetched_at"]) < CACHE_TTL:
-        return _rain_cache["data"]
-
-    # Layer 2: DB cache (if db available)
-    if db is not None:
-        db_cached = await _read_db_cache(db, RAIN_CACHE_KEY)
-        if db_cached is not None:
-            _rain_cache = {"fetched_at": now, "data": db_cached}
-            return db_cached
-
-    # Layer 3: fetch from Open-Meteo
-    try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.get(OPEN_METEO_URL)
-            resp.raise_for_status()
-            raw = resp.json()
-    except Exception:
-        logger.warning("Open-Meteo rain fetch failed, returning cached/fallback")
-        return _rain_cache.get("data", _RAIN_FALLBACK)
-
+def _parse_rain(raw: dict) -> dict:
     daily  = raw.get("daily", {})
     times  = daily.get("time", [])
     precip = daily.get("precipitation_sum", [])
@@ -143,53 +124,15 @@ async def get_rain_data(db=None) -> dict:
     total_14d = round(sum(d["mm"] for d in days), 1)
     total_7d  = round(sum(d["mm"] for d in days[-7:]), 1) if len(days) >= 7 else total_14d
 
-    result = {
+    return {
         "days": days,
         "total_7day_mm": total_7d,
         "total_14day_mm": total_14d,
         "assessment": _rain_assessment(total_14d),
     }
-    _rain_cache = {"fetched_at": now, "data": result}
-
-    # Persist to DB
-    if db is not None:
-        await _write_db_cache(db, RAIN_CACHE_KEY, result)
-
-    return result
 
 
-async def get_temp_data(db=None) -> dict:
-    """Fetch (or return cached) 7-day temperature data.
-
-    Caching layers (checked in order):
-      1. In-memory (hot cache, 1-hour TTL)
-      2. DB (weather_cache table, survives restarts, 1-hour TTL)
-      3. Open-Meteo API → stored in both caches
-    """
-    global _temp_cache
-    now = datetime.now(timezone.utc)
-
-    # Layer 1: in-memory hot cache
-    if _temp_cache.get("fetched_at") and (now - _temp_cache["fetched_at"]) < CACHE_TTL:
-        return _temp_cache["data"]
-
-    # Layer 2: DB cache (if db available)
-    if db is not None:
-        db_cached = await _read_db_cache(db, TEMP_CACHE_KEY)
-        if db_cached is not None:
-            _temp_cache = {"fetched_at": now, "data": db_cached}
-            return db_cached
-
-    # Layer 3: fetch from Open-Meteo
-    try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.get(OPEN_METEO_TEMP_URL)
-            resp.raise_for_status()
-            raw = resp.json()
-    except Exception:
-        logger.warning("Open-Meteo temp fetch failed, returning cached/fallback")
-        return _temp_cache.get("data", _TEMP_FALLBACK)
-
+def _parse_temp(raw: dict) -> dict:
     daily = raw.get("daily", {})
     times = daily.get("time", [])
     t_max = daily.get("temperature_2m_max", [])
@@ -202,12 +145,103 @@ async def get_temp_data(db=None) -> dict:
         for t, mn, mx in zip(times, t_min, t_max)
     ]
     avg_max = round(sum(d["max"] for d in days) / len(days), 1) if days else 0.0
+    return {"days": days, "avg_max_7day": avg_max, "assessment": _temp_assessment(avg_max)}
 
-    result = {"days": days, "avg_max_7day": avg_max, "assessment": _temp_assessment(avg_max)}
-    _temp_cache = {"fetched_at": now, "data": result}
 
-    # Persist to DB
-    if db is not None:
-        await _write_db_cache(db, TEMP_CACHE_KEY, result)
+# kind -> (url, parser, hot cache, db cache key, fallback)
+_SOURCES = {
+    "rain": (OPEN_METEO_URL, _parse_rain, _rain_cache, RAIN_CACHE_KEY, _RAIN_FALLBACK),
+    "temp": (OPEN_METEO_TEMP_URL, _parse_temp, _temp_cache, TEMP_CACHE_KEY, _TEMP_FALLBACK),
+}
+_inflight: dict[str, asyncio.Task] = {}
+_last_failure: dict[str, datetime] = {}
+# Background refreshes are held here so they are not garbage-collected mid-flight.
+_background: set[asyncio.Task] = set()
 
+
+async def _fetch_and_store(kind: str) -> dict | None:
+    url, parse, hot, _key, _fallback = _SOURCES[kind]
+    try:
+        async with httpx.AsyncClient(timeout=FETCH_TIMEOUT_S) as client:
+            resp = await client.get(url)
+            resp.raise_for_status()
+            result = parse(resp.json())
+    except Exception:
+        logger.warning("Open-Meteo %s fetch failed, returning cached/fallback", kind)
+        _last_failure[kind] = datetime.now(timezone.utc)
+        return None
+    hot["fetched_at"] = datetime.now(timezone.utc)
+    hot["data"] = result
+    _last_failure.pop(kind, None)
     return result
+
+
+def _fetch_once(kind: str) -> asyncio.Task | None:
+    """The one in-flight fetch for `kind`, started if needed. None while a
+    recent failure is backing off."""
+    task = _inflight.get(kind)
+    if task is not None and not task.done():
+        return task
+    failed_at = _last_failure.get(kind)
+    if failed_at is not None and datetime.now(timezone.utc) - failed_at < FAILURE_BACKOFF:
+        return None
+    task = asyncio.get_running_loop().create_task(_fetch_and_store(kind))
+    _inflight[kind] = task
+    _background.add(task)
+    task.add_done_callback(_background.discard)
+    return task
+
+
+async def _get(kind: str, db) -> dict:
+    _url, _parse, hot, cache_key, fallback = _SOURCES[kind]
+    now = datetime.now(timezone.utc)
+
+    # Layer 1: in-memory. Anything known is served at once; old data also
+    # starts one background refresh.
+    if hot.get("fetched_at"):
+        if now - hot["fetched_at"] >= REFRESH_AHEAD:
+            _fetch_once(kind)
+        return hot["data"]
+
+    # Layer 2: DB cache (if db available)
+    if db is not None:
+        db_cached = await _read_db_cache(db, cache_key)
+        if db_cached is not None:
+            hot["fetched_at"] = now
+            hot["data"] = db_cached
+            return db_cached
+
+    # Layer 3: nothing known yet, so this request waits for Open-Meteo.
+    task = _fetch_once(kind)
+    if task is None:
+        return fallback
+    result = await asyncio.shield(task)
+    if result is None:
+        return fallback
+    if db is not None:
+        await _write_db_cache(db, cache_key, result)
+    return result
+
+
+async def get_rain_data(db=None) -> dict:
+    """14-day rainfall with both 7d and 14d totals.
+
+    Caching layers (checked in order):
+      1. In-memory (served at once; refreshed in the background when old)
+      2. DB (weather_cache table, survives restarts, 1-hour TTL)
+      3. Open-Meteo API → stored in both caches
+    """
+    return await _get("rain", db)
+
+
+async def get_temp_data(db=None) -> dict:
+    """7-day temperature data. Same caching as get_rain_data."""
+    return await _get("temp", db)
+
+
+def clear_environment_cache() -> None:
+    """Forget every cached reading and failure (tests)."""
+    for _url, _parse, hot, _key, _fallback in _SOURCES.values():
+        hot.clear()
+    _inflight.clear()
+    _last_failure.clear()

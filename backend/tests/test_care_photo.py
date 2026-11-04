@@ -20,6 +20,7 @@ PHOTOS_SCHEMA = """
         household_id INTEGER NOT NULL,
         r2_key TEXT NOT NULL,
         url TEXT NOT NULL,
+        thumb_url TEXT,
         note TEXT,
         taken_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         care_log_id INTEGER,
@@ -37,8 +38,9 @@ class FakeStorage:
         self.puts = []
         self.deletes = []
 
-    def put(self, key, data, content_type):
+    def put(self, key, data, content_type, cache_control=None):
         self.puts.append((key, len(data), content_type))
+        self.cache_controls = getattr(self, "cache_controls", []) + [cache_control]
         return f"https://cdn.test/{key}"
 
     def delete(self, key):

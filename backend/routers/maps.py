@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import re
@@ -26,6 +27,26 @@ from services.local_time import local_today
 from services.uploads import storage_key
 
 logger = logging.getLogger(__name__)
+
+async def _care_context(db, household_id: int, lat, lon) -> dict:
+    """Weather and garden-log inputs for enrich_plants on a map.
+
+    The three weather lookups are independent and each may reach Open-Meteo,
+    so they run together instead of one after another. The two garden-log
+    reads use this request's connection: called without one they each
+    borrowed a second connection from the pool.
+    """
+    temp_data, rain_data, forecast_days = await asyncio.gather(
+        get_temp_data(), get_rain_data(), get_usable_forecast_days(lat, lon),
+    )
+    return {
+        "temp_data": temp_data,
+        "rain_data": rain_data,
+        "forecast_days": forecast_days,
+        "last_watered": await get_last_garden_watered(household_id, db),
+        "last_fertilized": await get_last_garden_fertilized(household_id, db),
+    }
+
 
 router = APIRouter(tags=["maps"])
 
@@ -349,7 +370,7 @@ async def get_map_plants(slug: str, account = Depends(get_current_account), db =
     map_type = map_row[0]["map_type"] or "outdoor"
 
     plant_rows = await db.execute_fetchall(
-        """SELECT p.id, p.name, p.species, p.map_x, p.map_y, p.photo_path,
+        """SELECT p.id, p.name, p.species, p.map_x, p.map_y, p.photo_path, p.photo_thumb_path,
                   p.container_id, p.ground_zone_id, p.display_radius_cm,
                   p.sun_requirement, p.plant_type, p.icon_key, p.species_id,
                   p.is_locked, p.quantity, p.care_thresholds, p.care_profile,
@@ -363,12 +384,8 @@ async def get_map_plants(slug: str, account = Depends(get_current_account), db =
         (map_id,),
     )
     today = local_today().isoformat()
-    temp_data = await get_temp_data()
-    rain_data = await get_rain_data()
-    last_watered = await get_last_garden_watered(account["household_id"])
-    last_fertilized = await get_last_garden_fertilized(account["household_id"])
-    forecast_days = await get_usable_forecast_days(map_row[0]["lat"], map_row[0]["lon"])
-    return await enrich_plants(db, plant_rows, today, temp_data=temp_data, rain_data=rain_data, last_watered=last_watered, last_fertilized=last_fertilized, forecast_days=forecast_days, map_type=map_type)
+    context = await _care_context(db, account["household_id"], map_row[0]["lat"], map_row[0]["lon"])
+    return await enrich_plants(db, plant_rows, today, map_type=map_type, **context)
 
 
 
@@ -381,15 +398,11 @@ async def get_map_items(slug: str, account = Depends(get_current_account), db = 
     map_id = map_row[0]["id"]
     map_type = map_row[0]["map_type"] or "outdoor"
     today = local_today().isoformat()
-    temp_data = await get_temp_data()
-    rain_data = await get_rain_data()
-    last_watered = await get_last_garden_watered(account["household_id"])
-    last_fertilized = await get_last_garden_fertilized(account["household_id"])
-    forecast_days = await get_usable_forecast_days(map_row[0]["lat"], map_row[0]["lon"])
+    context = await _care_context(db, account["household_id"], map_row[0]["lat"], map_row[0]["lon"])
 
     # Free-standing + ground-zone plants (not inside a container)
     plant_rows = await db.execute_fetchall(
-        """SELECT p.id, p.name, p.species, p.map_x, p.map_y, p.photo_path,
+        """SELECT p.id, p.name, p.species, p.map_x, p.map_y, p.photo_path, p.photo_thumb_path,
                   p.container_id, p.ground_zone_id, p.display_radius_cm, p.sun_requirement,
                   p.measured_sun_hours, p.mulch,
                   p.plant_type, p.icon_key, p.species_id, p.is_locked, p.quantity, p.care_thresholds,
@@ -402,19 +415,22 @@ async def get_map_items(slug: str, account = Depends(get_current_account), db = 
              AND p.container_id IS NULL""",
         (map_id,),
     )
-    plants = await enrich_plants(db, plant_rows, today, temp_data=temp_data, rain_data=rain_data, last_watered=last_watered, last_fertilized=last_fertilized, forecast_days=forecast_days, map_type=map_type)
+    plants = await enrich_plants(db, plant_rows, today, map_type=map_type, **context)
 
     # Objects on this map
     obj_rows = await db.execute_fetchall(
         "SELECT * FROM objects WHERE map_id = ? AND is_active = 1",
         (map_id,),
     )
-    objects = []
-    for o in obj_rows:
-        obj = dict(o)
-        # Get contained plants
+    # Every container's plants in one query and one enrichment pass. This was
+    # a query (plus a schedule query) per pot, so a balcony of pots meant
+    # dozens of round trips before the map could draw.
+    objects = [dict(o) for o in obj_rows]
+    contained_by_object: dict[int, list[dict]] = {o["id"]: [] for o in objects}
+    if objects:
+        placeholders = ",".join("?" for _ in objects)
         contained_rows = await db.execute_fetchall(
-            """SELECT p.id, p.name, p.species, p.map_x, p.map_y, p.photo_path,
+            f"""SELECT p.id, p.name, p.species, p.map_x, p.map_y, p.photo_path, p.photo_thumb_path,
                       p.container_id, p.ground_zone_id, p.display_radius_cm, p.sun_requirement,
                       p.measured_sun_hours, p.mulch,
                       p.plant_type, p.icon_key, p.species_id, p.is_locked, p.quantity, p.care_thresholds,
@@ -423,15 +439,17 @@ async def get_map_items(slug: str, account = Depends(get_current_account), db = 
                       s.common_name_en AS species_common_name_en
                FROM plants p
                LEFT JOIN plant_species s ON p.species_id = s.id
-               WHERE p.container_id = ? AND p.is_active = 1""",
-            (obj["id"],),
+               WHERE p.container_id IN ({placeholders}) AND p.is_active = 1
+               ORDER BY p.id""",
+            tuple(o["id"] for o in objects),
         )
-        contained = await enrich_plants(db, contained_rows, today, temp_data=temp_data, rain_data=rain_data, last_watered=last_watered, last_fertilized=last_fertilized, forecast_days=forecast_days, map_type=map_type)
+        contained = await enrich_plants(db, contained_rows, today, map_type=map_type, **context)
         for p in contained:
             p["map_x"] = p["map_x"] or 0
             p["map_y"] = p["map_y"] or 0
-        obj["contained_plants"] = contained
-        objects.append(obj)
+            contained_by_object[p["container_id"]].append(p)
+    for obj in objects:
+        obj["contained_plants"] = contained_by_object[obj["id"]]
 
     # Secondary placements — extra spots for a plant whose primary marker lives
     # elsewhere (or on another map). Rendered as small dots that open the parent.

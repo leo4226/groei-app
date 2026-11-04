@@ -123,6 +123,27 @@ describe('PhotoJournal — capability rendering', () => {
     const text = container.textContent ?? ''
     expect(text).toContain('Delete')
   })
+
+  it('shows the thumbnail in the grid and the full photo in the viewer', async () => {
+    mocks.photos = [{
+      id: 1, plant_id: 1, url: 'https://example.com/p1.jpg', thumb_url: 'https://example.com/p1.thumb.jpg',
+      note: null, taken_at: '2026-01-01T00:00:00Z', care_log_id: null, species_mismatch: false,
+    } as unknown as PlantPhoto]
+    await render()
+    const gridImage = container.querySelector('button img') as HTMLImageElement
+    expect(gridImage.getAttribute('src')).toBe('https://example.com/p1.thumb.jpg')
+
+    act(() => (gridImage.closest('button') as HTMLButtonElement).click())
+    await act(async () => {})
+    const sources = [...container.querySelectorAll('img')].map((img) => img.getAttribute('src'))
+    expect(sources).toContain('https://example.com/p1.jpg')
+  })
+
+  it('falls back to the full photo when there is no thumbnail', async () => {
+    await render()
+    expect((container.querySelector('button img') as HTMLImageElement).getAttribute('src'))
+      .toBe('https://example.com/p1.jpg')
+  })
 })
 
 describe('PhotoJournal reminder toggle', () => {

@@ -2286,6 +2286,88 @@ async def _run_backfill_plant_types(db, params: dict, on_progress) -> dict:
     }
 
 
+async def _run_backfill_photo_thumbnails(db, params: dict, on_progress) -> dict:
+    """Give every journal photo uploaded before thumbnails existed a ~480 px
+    thumbnail, and its original a year-long cache header.
+
+    Lists and sheets used to show the full upload (up to 1600 px, a few hundred
+    KB) in a 48–120 px slot. New uploads store a thumbnail beside the photo;
+    this does the same for the ones already in R2. Every household's photos:
+    the thumbnails are storage plumbing, not one household's data.
+
+    Re-runnable: it only touches rows whose thumb_url is still NULL, so a run
+    cut short by a deploy resumes where it stopped. A photo missing from R2 or
+    not readable as an image is skipped and keeps showing the original.
+    """
+    from services.thumbnails import IMMUTABLE_CACHE, make_thumbnail, thumb_key
+    from services.uploads import sniff_image_type
+
+    rows = await db.execute_fetchall(
+        "SELECT id, r2_key, url FROM plant_photos WHERE thumb_url IS NULL ORDER BY id"
+    )
+    total = len(rows)
+    await on_progress(0, total)
+    storage = build_storage_from_env()
+    made = 0
+    skipped_details: list[dict] = []
+    for index, row in enumerate(rows, start=1):
+        key = row["r2_key"]
+        data = await asyncio.to_thread(storage.get, key)
+        if data is None:
+            skipped_details.append({"id": row["id"], "url": row["url"], "reason": "missing_in_storage"})
+        else:
+            thumb = await asyncio.to_thread(make_thumbnail, data)
+            if thumb is None:
+                skipped_details.append({"id": row["id"], "url": row["url"], "reason": "not_an_image"})
+            else:
+                thumb_url = await asyncio.to_thread(
+                    storage.put, thumb_key(key), thumb, "image/jpeg", IMMUTABLE_CACHE,
+                )
+                try:
+                    await asyncio.to_thread(
+                        storage.set_cache_control, key,
+                        sniff_image_type(data) or "image/jpeg", IMMUTABLE_CACHE,
+                    )
+                except Exception:
+                    # Only a caching header: the thumbnail itself is what matters.
+                    logger.warning("Could not set cache headers on %s", key, exc_info=True)
+                await db.execute(
+                    "UPDATE plant_photos SET thumb_url = ? WHERE id = ?", (thumb_url, row["id"]),
+                )
+                made += 1
+        if index % 10 == 0 or index == total:
+            await on_progress(index, total)
+
+    # plants.photo_path is the newest journal photo; point photo_thumb_path at
+    # that photo's thumbnail wherever one now exists.
+    await db.execute(
+        """UPDATE plants SET photo_thumb_path = (
+               SELECT pp.thumb_url FROM plant_photos pp
+                WHERE pp.plant_id = plants.id AND pp.url = plants.photo_path
+                  AND pp.thumb_url IS NOT NULL
+             ORDER BY pp.id DESC LIMIT 1)
+            WHERE photo_path IS NOT NULL AND photo_thumb_path IS NULL"""
+    )
+    await db.commit()
+    return {
+        "found": total,
+        "created": made,
+        "skipped": len(skipped_details),
+        "skipped_details": skipped_details,
+    }
+
+
+@router.get("/admin-panel/photo-thumbnails/preview")
+async def photo_thumbnails_preview(db=Depends(db_dep), admin=Depends(require_admin)):
+    """How many journal photos, across all households, still have no thumbnail."""
+    rows = await db.execute_fetchall(
+        """SELECT COUNT(*) AS total,
+                  SUM(CASE WHEN thumb_url IS NULL THEN 1 ELSE 0 END) AS missing
+             FROM plant_photos"""
+    )
+    return {"total_photos": int(rows[0]["total"] or 0), "missing_thumbnail": int(rows[0]["missing"] or 0)}
+
+
 _JOB_RUNNERS = {
     "generate_icons":         _run_generate_icons,
     "backfill_thresholds":    _run_backfill_thresholds,
@@ -2295,6 +2377,7 @@ _JOB_RUNNERS = {
     "backfill_plant_types":   _run_backfill_plant_types,
     "backfill_species":       _run_backfill_species,
     "backfill_photo_embeddings": _run_backfill_photo_embeddings,
+    "backfill_photo_thumbnails": _run_backfill_photo_thumbnails,
 }
 
 
