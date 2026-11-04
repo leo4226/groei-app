@@ -219,11 +219,14 @@ export default function App() {
 
   // Load initial data: on mount (token from previous session) AND after login
   // (navigate from /login → protected route). Skip if already loading or loaded.
+  // Data shown from the device cache is refreshed quietly instead: the page is
+  // already drawn, so there is nothing to wait for.
+  const isStale = useFloreren((s) => s.isStale)
   useEffect(() => {
-    if (getToken() && !isLoginPage && !isPublicHome && !isTourPage && !hasLoaded && !isLoading) {
-      load()
-    }
-  }, [load, isLoginPage, isPublicHome, isTourPage, hasLoaded, isLoading])
+    if (!getToken() || isLoginPage || isPublicHome || isTourPage || isLoading) return
+    if (!hasLoaded) load()
+    else if (isStale) load({ quiet: true })
+  }, [load, isLoginPage, isPublicHome, isTourPage, hasLoaded, isLoading, isStale])
 
   // Prime the icon URL index once so generated (R2) icons resolve app-wide.
   useEffect(() => { icons.catalog().catch(() => {}) }, [])

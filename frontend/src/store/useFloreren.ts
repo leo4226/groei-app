@@ -3,6 +3,7 @@ import type { User, Location, Plant, RecentLogEntry, PlantCreateInput, MapInfo, 
 import { auth as authApi, users as usersApi, plants as plantsApi, care as careApi, maps as mapsApi, icons as iconsApi, weatherWarnings as weatherWarningsApi } from '../api/client'
 import type { AccountMe } from '../api/client'
 import type { PageContext } from '../api/chat'
+import { clearDeviceCache, readCache, writeCache } from './deviceCache'
 
 interface FlorerStore {
   /** The signed-in account (role + server-derived capabilities). Seed of every
@@ -19,6 +20,9 @@ interface FlorerStore {
   activeUserId: number | null
   isLoading: boolean
   hasLoaded: boolean
+  /** The shared data came from this device's cache (see deviceCache.ts) and
+   * has not been refreshed from the server yet this session. */
+  isStale: boolean
   error: string | null
   showPlantPicker: boolean
   careVersions: Record<number, number>
@@ -28,7 +32,8 @@ interface FlorerStore {
   refreshTick: number
   lastRefreshAt: number
 
-  load: () => Promise<void>
+  /** `quiet` refreshes without the loading state, for data already on screen. */
+  load: (options?: { quiet?: boolean }) => Promise<void>
   refreshAll: () => Promise<void>
   loadMe: () => Promise<void>
   loadMaps: () => Promise<void>
@@ -86,19 +91,47 @@ export function resolveActiveUserId(
 }
 
 
+/** What the app needs to draw its first screen; cached per account. */
+interface BootSnapshot {
+  me: AccountMe | null
+  users: User[]
+  locations: Location[]
+  maps: MapInfo[]
+  plants: Plant[]
+}
+
+const BOOT_CACHE = 'boot'
+
+function readBootSnapshot(): BootSnapshot | null {
+  const cached = readCache<BootSnapshot>(BOOT_CACHE)
+  if (!cached || !Array.isArray(cached.plants) || !Array.isArray(cached.maps)) return null
+  return cached
+}
+
+const bootSnapshot = readBootSnapshot()
+
+// One load at a time: the App, a page and a foreground refresh can all ask at
+// once on a cold start, and each used to send its own five requests.
+let inflightLoad: Promise<void> | null = null
+
 export const useFloreren = create<FlorerStore>((set, get) => ({
-  me: null,
-  users: [],
-  locations: [],
-  maps: [],
-  plants: [],
+  me: bootSnapshot?.me ?? null,
+  users: bootSnapshot?.users ?? [],
+  locations: bootSnapshot?.locations ?? [],
+  maps: bootSnapshot?.maps ?? [],
+  plants: bootSnapshot?.plants ?? [],
   recentLog: [],
   warningSummary: null,
   plantFact: null,
   assistantPageContext: null,
-  activeUserId: getSavedUserId(),
+  activeUserId: bootSnapshot
+    ? resolveActiveUserId(bootSnapshot.users, bootSnapshot.me, getSavedUserId())
+    : getSavedUserId(),
   isLoading: false,
-  hasLoaded: false,
+  // A cached copy counts as loaded, so pages draw it at once; isStale makes
+  // the App refresh it in the background.
+  hasLoaded: bootSnapshot !== null,
+  isStale: bootSnapshot !== null,
   error: null,
   showPlantPicker: false,
   careVersions: {},
@@ -110,32 +143,45 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
     // Forget the previous person's profile too: someone else may be signing in
     // on this device, and their own profile is resolved from the account.
     try { localStorage.removeItem(STORAGE_KEY) } catch { /* private mode */ }
+    clearDeviceCache()
     set({
-      hasLoaded: false, isLoading: false, error: null,
+      hasLoaded: false, isLoading: false, isStale: false, error: null,
       plants: [], maps: [], users: [], locations: [],
       recentLog: [], warningSummary: null, plantFact: null,
       me: null, activeUserId: null,
     })
   },
 
-  load: async () => {
-    set({ isLoading: true, error: null })
-    try {
-      const [users, locations, maps, plants, me] = await Promise.all([
-        usersApi.list(),
-        usersApi.locations(),
-        mapsApi.list(),
-        plantsApi.list(),
-        authApi.me(),
-      ])
-      const activeUserId = resolveActiveUserId(users, me, get().activeUserId)
-      const state: Partial<FlorerStore> = { users, locations, maps, plants, me, activeUserId, isLoading: false, hasLoaded: true, lastRefreshAt: Date.now() }
-      if (activeUserId !== null) {
-        try { localStorage.setItem(STORAGE_KEY, String(activeUserId)) } catch { /* private mode */ }
+  load: async (options = {}) => {
+    if (inflightLoad) return inflightLoad
+    const quiet = options.quiet ?? false
+    inflightLoad = (async () => {
+      if (quiet) set({ error: null })
+      else set({ isLoading: true, error: null })
+      try {
+        const [users, locations, maps, plants, me] = await Promise.all([
+          usersApi.list(),
+          usersApi.locations(),
+          mapsApi.list(),
+          plantsApi.list(),
+          authApi.me(),
+        ])
+        const activeUserId = resolveActiveUserId(users, me, get().activeUserId)
+        const state: Partial<FlorerStore> = { users, locations, maps, plants, me, activeUserId, isLoading: false, hasLoaded: true, isStale: false, lastRefreshAt: Date.now() }
+        if (activeUserId !== null) {
+          try { localStorage.setItem(STORAGE_KEY, String(activeUserId)) } catch { /* private mode */ }
+        }
+        set(state)
+      } catch (e) {
+        // A quiet refresh keeps the cached data on screen; the banner says it
+        // could not be refreshed.
+        set({ error: (e as Error).message, isLoading: false, hasLoaded: true })
       }
-      set(state)
-    } catch (e) {
-      set({ error: (e as Error).message, isLoading: false, hasLoaded: true })
+    })()
+    try {
+      await inflightLoad
+    } finally {
+      inflightLoad = null
     }
   },
 
@@ -323,3 +369,25 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
 
   clearError: () => set({ error: null }),
 }))
+
+// Keep the device copy in step with what the app shows, including after care
+// is logged or a plant changes. Debounced: a burst of updates is one write.
+let persistTimer: ReturnType<typeof setTimeout> | null = null
+useFloreren.subscribe((state, previous) => {
+  if (!state.hasLoaded || state.isStale) return
+  if (
+    state.plants === previous.plants && state.maps === previous.maps
+    && state.users === previous.users && state.locations === previous.locations
+    && state.me === previous.me
+  ) return
+  if (persistTimer) clearTimeout(persistTimer)
+  persistTimer = setTimeout(() => {
+    persistTimer = null
+    const current = useFloreren.getState()
+    // Signed out or a new session started since this was scheduled.
+    if (!current.hasLoaded || current.isStale) return
+    const { me, users, locations, maps, plants } = current
+    const snapshot: BootSnapshot = { me, users, locations, maps, plants }
+    writeCache(BOOT_CACHE, snapshot)
+  }, 400)
+})

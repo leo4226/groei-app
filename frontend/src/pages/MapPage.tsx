@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect, lazy, Suspense } from 'react'
+import { useState, useCallback, useMemo, useEffect, useRef, lazy, Suspense } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import type { MapPlant, MapObject, CanvasData, GroundZone, WeatherWarningGroupOut } from '../types'
 import MapView from '../components/map/MapView'
@@ -59,8 +59,11 @@ export default function MapPage() {
   const activeUserId = useFloreren((s) => s.activeUserId)
   const setAssistantPageContext = useFloreren((s) => s.setAssistantPageContext)
   const { canEdit, isViewer } = useCapabilities()
+  // Fallback only: on a cold start the App's load() is about to fetch the
+  // plants, and asking here too sent the same request twice.
   useEffect(() => {
-    if (allPlants.length === 0) loadPlantsStore()
+    const store = useFloreren.getState()
+    if (store.hasLoaded && !store.isLoading && store.plants.length === 0) loadPlantsStore()
   }, [loadPlantsStore])
   // Cross-garden care needs power the bottom sheet's global view.
   useEffect(() => {
@@ -90,16 +93,25 @@ export default function MapPage() {
     localStorage.setItem('lastMapSlug', slug)
   }, [slug])
 
-  // Force refresh when navigating back (location.key changes on popstate)
+  // Force refresh when navigating back to this map (location.key changes on
+  // popstate). Not on the first render, and not when the map itself changed:
+  // useMapData loads on mount and on a new slug by itself, and this effect
+  // firing then too fetched the map, its items and its ground zones twice.
+  const seenLocation = useRef({ key: location.key, slug })
   useEffect(() => {
+    const previous = seenLocation.current
+    seenLocation.current = { key: location.key, slug }
+    if (previous.key === location.key || previous.slug !== slug) return
     refreshMapData()
-  }, [location.key])
+  }, [location.key, slug, refreshMapData])
   const fertilize = useGardenFertilize()
   const undo = useUndoableRemove()
 
   // Load full map list for the indoor/outdoor toggle
+  // Same as the plants above: only when the app-wide load left it empty.
   useEffect(() => {
-    if (maps.length === 0) loadMaps()
+    const store = useFloreren.getState()
+    if (store.hasLoaded && !store.isLoading && store.maps.length === 0) loadMaps()
   }, [loadMaps])
 
   const unplacedPlants = useMemo(() => selectUnplacedPlants(allPlants), [allPlants])

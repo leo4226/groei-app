@@ -1,4 +1,5 @@
 import { withNetworkRetry } from './retry'
+import { clearDeviceCache } from '../store/deviceCache'
 
 const BASE = import.meta.env.VITE_API_BASE_URL ?? '/api'
 
@@ -110,6 +111,8 @@ export function saveToken(token: string): void {
 
 export function clearToken(): void {
   localStorage.removeItem('floreren-token')
+  // The household data cached for instant start-up goes with the session.
+  clearDeviceCache()
 }
 
 export async function forgotPassword(email: string): Promise<{ message: string }> {
