@@ -23,6 +23,10 @@ VIEWER_READ_ACTION = "viewer-allowed authenticated read-only action"
 # names of plants they are allowed to look at; nothing here touches
 # household data, so require_editor would be gatekeeping for its own sake.
 VIEWER_PERSONAL_PROGRESS = "viewer-allowed write to the caller's own learning progress"
+# The caller's own credentials and preferences: password, sessions, account
+# deletion, language and notifications. Only the signed-in account's own rows
+# change, so a viewer may use them.
+VIEWER_PERSONAL_SETTINGS = "viewer-allowed write to the caller's own account settings"
 GUEST_OR_PUBLIC = "public or guest-token action"
 PLATFORM_ADMIN = "platform-admin or internal-secret operation"
 GAME_ACCOUNT_OR_GUEST = "editor account or valid game guest"
@@ -38,7 +42,6 @@ POLICY_ENTRIES = (
     *_policies(
         EDITOR_REQUIRED,
         "Changes household data or starts paid/external work; owners and editors may perform it.",
-        ("POST", "/api/auth/change-password"),
         ("POST", "/api/bug-report"),
         ("POST", "/api/bug-report/draft"),
         ("DELETE", "/api/calendar/subscription"),
@@ -111,15 +114,10 @@ POLICY_ENTRIES = (
         ("PUT", "/api/plants/{plant_id}/position"),
         ("PATCH", "/api/plants/{plant_id}/restore"),
         ("POST", "/api/plants/{plant_id}/retry-species"),
-        ("DELETE", "/api/push/subscription"),
-        ("POST", "/api/push/subscription"),
-        ("POST", "/api/push/test"),
         ("POST", "/api/quiz/guess"),
         ("POST", "/api/quiz/mc"),
         ("POST", "/api/quiz/rounds"),
-        ("PUT", "/api/settings/notifications"),
         ("PATCH", "/api/users/{user_id}"),
-        ("PATCH", "/api/users/{user_id}/language"),
         ("DELETE", "/api/weather-warnings/{warning_id}/acknowledgment"),
         ("POST", "/api/weather-warnings/{warning_id}/acknowledgment"),
         ("POST", "/api/weed-sightings"),
@@ -150,6 +148,18 @@ POLICY_ENTRIES = (
         VIEWER_PERSONAL_PROGRESS,
         "Records only this account's own spaced-repetition state; no household data is written.",
         ("POST", "/api/study/answer"),
+    ),
+    *_policies(
+        VIEWER_PERSONAL_SETTINGS,
+        "Writes only the caller's own credential, session or preference rows; no household data.",
+        ("POST", "/api/auth/change-password"),
+        ("POST", "/api/auth/delete-account"),
+        ("POST", "/api/auth/logout-all"),
+        ("DELETE", "/api/push/subscription"),
+        ("POST", "/api/push/subscription"),
+        ("POST", "/api/push/test"),
+        ("PUT", "/api/settings/notifications"),
+        ("PATCH", "/api/users/{user_id}/language"),
     ),
     *_policies(
         VIEWER_READ_ACTION,
@@ -261,7 +271,7 @@ def test_complete_mounted_write_route_inventory_has_one_policy_and_correct_depen
         elif category == GAME_ACCOUNT_OR_GUEST:
             assert game_mutation_actor is not None
             assert _has_dependency(route, game_mutation_actor), (method, path)
-        elif category in (VIEWER_READ_ACTION, VIEWER_PERSONAL_PROGRESS):
+        elif category in (VIEWER_READ_ACTION, VIEWER_PERSONAL_PROGRESS, VIEWER_PERSONAL_SETTINGS):
             assert _has_dependency(route, get_current_account), (method, path)
             assert not _has_dependency(route, require_editor), (method, path)
         elif category == PLATFORM_ADMIN:

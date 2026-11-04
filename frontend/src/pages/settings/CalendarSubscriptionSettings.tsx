@@ -206,7 +206,7 @@ export default function CalendarSubscriptionSettings({ canEdit = true }: { canEd
   }`
 
   return (
-    <article className="card p-4" data-calendar-subscription>
+    <article data-calendar-subscription>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div>
           <h3

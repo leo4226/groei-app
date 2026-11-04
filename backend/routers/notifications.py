@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field, field_validator
 import services.digest as digest
 import logging
 logger = logging.getLogger(__name__)
-from auth import get_current_account, require_editor
+from auth import get_current_account
 from care_types import parse_muted_care_types
 from database import db_dep
 from services.db_transactions import database_transaction
@@ -104,8 +104,10 @@ async def get_notification_prefs(db=Depends(db_dep), account=Depends(get_current
 async def update_notification_prefs(
     body: NotificationPrefsUpdate,
     db=Depends(db_dep),
-    account=Depends(require_editor),
+    account=Depends(get_current_account),
 ):
+    # Personal, so viewers may change it too: these rows belong to the caller's
+    # account and decide only what reaches them, never household data.
     # Same parser as the read path: trims + keeps only known care types so a
     # bad client can't pollute the stored set.
     muted = parse_muted_care_types(",".join(body.muted_care_types))
@@ -189,7 +191,7 @@ async def vapid_public_key():
 async def save_push_subscription(
     body: PushSubscriptionIn,
     db=Depends(db_dep),
-    account=Depends(require_editor),
+    account=Depends(get_current_account),
 ):
     """Upsert by endpoint — a browser re-subscribing must not create dupes."""
     await db.execute(
@@ -211,7 +213,7 @@ async def save_push_subscription(
 async def delete_push_subscription(
     body: PushUnsubscribeIn,
     db=Depends(db_dep),
-    account=Depends(require_editor),
+    account=Depends(get_current_account),
 ):
     await db.execute(
         "DELETE FROM push_subscriptions WHERE endpoint = ? AND account_id = ?",
@@ -236,7 +238,7 @@ class PushTestResult(BaseModel):
 
 
 @router.post("/push/test", response_model=PushTestResult)
-async def send_test_push(db=Depends(db_dep), account=Depends(require_editor)):
+async def send_test_push(db=Depends(db_dep), account=Depends(get_current_account)):
     """Send a one-off test push to the caller's own subscriptions and report
     the outcome. Makes the otherwise-invisible delivery path debuggable: the
     daily digest only runs at the user's chosen hour, so without this there is

@@ -20,15 +20,17 @@ from models import (
     ForgotPasswordInput,
     ResetPasswordInput,
     ChangePasswordInput,
+    DeleteAccountInput,
 )
 from auth import (
     capabilities_for_role,
     create_token,
     get_current_account,
     hash_password,
-    require_editor,
     verify_password,
 )
+from services.account_deletion import delete_account, delete_household_if_empty
+from services.calendar_feed_cache import forget_account_feeds
 from services.db_transactions import database_transaction
 from services.email import send_password_reset
 from services.rate_limit import account_rate_limit, rate_limit
@@ -245,11 +247,14 @@ async def reset_password(body: ResetPasswordInput, db=Depends(db_dep)):
     # by changing it, sign the real owner out everywhere.
     dependencies=[Depends(account_rate_limit("change-password", limit=5, window_s=900))],
 )
-async def change_password(body: ChangePasswordInput, current=Depends(require_editor), db=Depends(db_dep)):
+async def change_password(body: ChangePasswordInput, current=Depends(get_current_account), db=Depends(db_dep)):
     """Change the current account's password. Requires current password verification.
 
     Every other session ends with it (the session version is bumped); this
-    device gets a fresh token in the response so it stays signed in."""
+    device gets a fresh token in the response so it stays signed in.
+
+    Open to viewers: it is their own credential, not household data, and a
+    viewer could already set a new one through the forgot-password link."""
     rows = await db.execute_fetchall(
         "SELECT id, password_hash, session_version FROM accounts WHERE id = ?",
         (current["account_id"],)
@@ -259,7 +264,7 @@ async def change_password(body: ChangePasswordInput, current=Depends(require_edi
 
     account = dict(rows[0])
     if not verify_password(body.current_password, account["password_hash"]):
-        raise HTTPException(status_code=400, detail="Current password is incorrect")
+        raise HTTPException(status_code=400, detail={"code": "wrong_password"})
 
     if len(body.new_password) < 8:
         raise HTTPException(status_code=400, detail={"code": "password_too_short"})
@@ -276,6 +281,62 @@ async def change_password(body: ChangePasswordInput, current=Depends(require_edi
         session_version=session_version,
     )
     return {"message": "Password updated", "token": token}
+
+
+@router.post("/logout-all", status_code=204)
+async def logout_all(current=Depends(get_current_account), db=Depends(db_dep)):
+    """End every session of this account, including the one making the call.
+
+    For a lost phone or a shared laptop when the password itself is fine. It
+    bumps the same session version a password change does, so integration
+    tokens bound to it stop working too."""
+    await db.execute(
+        "UPDATE accounts SET session_version = COALESCE(session_version, 0) + 1 WHERE id = ?",
+        (current["account_id"],),
+    )
+    await db.commit()
+
+
+@router.post(
+    "/delete-account",
+    # The password is the only thing standing between a stolen session and a
+    # deleted garden, so it gets the same guess limit as change-password.
+    dependencies=[Depends(account_rate_limit("delete-account", limit=5, window_s=900))],
+)
+async def delete_own_account(
+    body: DeleteAccountInput, current=Depends(get_current_account), db=Depends(db_dep),
+):
+    """Delete the caller's own account, after re-entering the password.
+
+    A member leaves the household: their account goes, their care history
+    stays as "former member" (services/account_deletion.py). The owner can
+    only do this as the last member, since there is no way to hand the
+    household over yet; then the household and everything in it goes too.
+    """
+    rows = await db.execute_fetchall(
+        "SELECT password_hash, household_id, role FROM accounts WHERE id = ?",
+        (current["account_id"],),
+    )
+    if not rows:
+        raise HTTPException(status_code=404, detail="Account not found")
+    account = dict(rows[0])
+    if not verify_password(body.password, account["password_hash"]):
+        raise HTTPException(status_code=400, detail={"code": "wrong_password"})
+
+    household_id = account["household_id"]
+    if account["role"] == "owner":
+        others = await db.execute_fetchall(
+            "SELECT COUNT(*) AS n FROM accounts WHERE household_id = ? AND id != ?",
+            (household_id, current["account_id"]),
+        )
+        if others[0]["n"] > 0:
+            raise HTTPException(status_code=409, detail={"code": "owner_has_members"})
+
+    async with database_transaction(db):
+        await delete_account(db, current["account_id"])
+        household_deleted = await delete_household_if_empty(db, household_id)
+    forget_account_feeds(current["account_id"])
+    return {"household_deleted": household_deleted}
 
 
 @router.get("/me", response_model=AccountOut)

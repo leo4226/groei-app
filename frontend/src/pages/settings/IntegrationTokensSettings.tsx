@@ -26,7 +26,7 @@ export default function IntegrationTokensSettings({ canEdit = true }: { canEdit?
   const t = useT()
   const [tokens, setTokens] = useState<IntegrationToken[]>([])
   const [loading, setLoading] = useState(true)
-  const [name, setName] = useState('LAveren')
+  const [name, setName] = useState('')
   const [allowCare, setAllowCare] = useState(false)
   const [created, setCreated] = useState<IntegrationTokenCreated | null>(null)
   const [busy, setBusy] = useState(false)
@@ -83,7 +83,7 @@ export default function IntegrationTokensSettings({ canEdit = true }: { canEdit?
   }
 
   return (
-    <div className="border-t border-border pt-4" data-integration-tokens>
+    <div data-integration-tokens>
       <div className="text-sm font-semibold">{t.settings.integrationsTitle}</div>
       <p className="mt-1 text-xs leading-relaxed text-text-muted">{t.settings.integrationsDescription}</p>
       <div className="mt-3 rounded-2xl border border-amber-500/25 bg-amber-500/10 p-3 text-xs leading-relaxed text-text-soft" role="note">

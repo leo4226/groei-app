@@ -41,8 +41,10 @@ async def update_user_language(
     user_id: int,
     body: UserLanguageUpdate,
     db = Depends(db_dep),
-    account = Depends(require_editor),
+    account = Depends(get_current_account),
 ):
+    # A viewer's own UI language is theirs to pick; _own_user_row keeps it to
+    # the caller's own profile.
     await _own_user_row(db, user_id, account)
     await db.execute(
         "UPDATE users SET language = ? WHERE id = ? AND household_id = ?",

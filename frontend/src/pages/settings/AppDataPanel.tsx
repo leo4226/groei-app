@@ -5,11 +5,9 @@ import Glyph from '../../components/ui/Glyph'
 import { resetAssistant } from '../../components/HelpAssistant'
 import { localIsoDate } from '../../utils/dateFormat'
 import { userFacingError } from '../../utils/userFacingError'
-import IntegrationTokensSettings from './IntegrationTokensSettings'
 
 interface Props {
   onInstallClick: () => void
-  canEdit?: boolean
 }
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -25,13 +23,15 @@ function downloadBlob(blob: Blob, filename: string) {
 
 /**
  * The app itself: installing it, getting your data out, resetting the
- * assistant, and which build you're on.
+ * assistant, and which build you're on. Dashboard tokens moved to the
+ * Connections group, next to the calendar feed: both are secret links that let
+ * something outside the app read the garden.
  *
  * "Install the app" lives here rather than under Notifications, where it used
  * to sit because push depends on it. Someone looking for it looks under the
  * app, not under alerts.
  */
-export default function AppDataPanel({ onInstallClick, canEdit = true }: Props) {
+export default function AppDataPanel({ onInstallClick }: Props) {
   const t = useT()
   const [busy, setBusy] = useState<'json' | 'csv' | null>(null)
   const [ready, setReady] = useState(false)
@@ -104,9 +104,6 @@ export default function AppDataPanel({ onInstallClick, canEdit = true }: Props) 
         {ready && <p className="mt-2 text-sm text-primary">{t.settings.downloadReady}</p>}
         {error && <p className="mt-2 text-sm text-fiery-red">{error}</p>}
       </div>
-
-      {/* ── Connected dashboards (LAveren) ───────────────────────────────── */}
-      <IntegrationTokensSettings canEdit={canEdit} />
 
       {/* ── Assistant ────────────────────────────────────────────────────── */}
       <div className="border-t border-border pt-4">

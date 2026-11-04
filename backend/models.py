@@ -954,6 +954,10 @@ class ChangePasswordInput(BaseModel):
     new_password: str
 
 
+class DeleteAccountInput(BaseModel):
+    password: str
+
+
 class InviteInput(BaseModel):
     """Generate an invite code (from the creator's household).
 

@@ -32,19 +32,13 @@ ISSUE_ROUTERS = (
     discoveries_router.router,
 )
 PROTECTED_WRITE_ROUTES = {
-    ("POST", "/api/auth/change-password"),
     ("POST", "/api/household/invite"),
     ("PUT", "/api/household/calendar-grouping"),
     ("PATCH", "/api/household/members/{member_id}"),
     ("PATCH", "/api/household/members/{member_id}/role"),
     ("DELETE", "/api/household/members/{user_id}"),
     ("PATCH", "/api/household"),
-    ("PATCH", "/api/users/{user_id}/language"),
     ("PATCH", "/api/users/{user_id}"),
-    ("PUT", "/api/settings/notifications"),
-    ("POST", "/api/push/subscription"),
-    ("DELETE", "/api/push/subscription"),
-    ("POST", "/api/push/test"),
     ("PATCH", "/api/calendar/subscription"),
     ("POST", "/api/calendar/subscription"),
     ("DELETE", "/api/calendar/subscription"),
@@ -68,6 +62,20 @@ OWNER_ONLY_WRITE_ROUTES = {
     ("PATCH", "/api/household/members/{member_id}/role"),
     ("DELETE", "/api/household/members/{user_id}"),
     ("PATCH", "/api/household"),
+}
+
+# The caller's own credentials and preferences. They write only rows that
+# belong to the signed-in account, so a viewer may use them (settings audit,
+# 2026-11): a viewer could not switch off their own daily email or push.
+PERSONAL_WRITE_ROUTES = {
+    ("POST", "/api/auth/change-password"),
+    ("POST", "/api/auth/logout-all"),
+    ("POST", "/api/auth/delete-account"),
+    ("PATCH", "/api/users/{user_id}/language"),
+    ("PUT", "/api/settings/notifications"),
+    ("POST", "/api/push/subscription"),
+    ("DELETE", "/api/push/subscription"),
+    ("POST", "/api/push/test"),
 }
 
 # These write-method routes have deliberately different authorization models or
@@ -212,7 +220,7 @@ def test_issue_923_mounted_write_inventory_is_complete_and_protects_every_editor
     scoped_routes = _scoped_write_routes()
     mounted_routes = _issue_write_routes(scoped_routes)
 
-    expected_routes = PROTECTED_WRITE_ROUTES | EXEMPT_WRITE_ROUTES
+    expected_routes = PROTECTED_WRITE_ROUTES | PERSONAL_WRITE_ROUTES | EXEMPT_WRITE_ROUTES
     assert set(scoped_routes) == expected_routes
     assert set(mounted_routes) == expected_routes
 
@@ -220,6 +228,10 @@ def test_issue_923_mounted_write_inventory_is_complete_and_protects_every_editor
         expected = require_owner if route_key in OWNER_ONLY_WRITE_ROUTES else require_editor
         assert _has_dependency(scoped_routes[route_key], expected), route_key
         assert _has_dependency(mounted_routes[route_key], expected), route_key
+
+    for route_key in PERSONAL_WRITE_ROUTES:
+        assert not _has_dependency(scoped_routes[route_key], require_editor), route_key
+        assert not _has_dependency(scoped_routes[route_key], require_owner), route_key
 
 
 def test_issue_923_intentional_non_editor_routes_keep_their_existing_auth_models():
@@ -251,13 +263,7 @@ async def test_viewer_mutations_are_rejected_before_account_household_and_planni
     db = household_account_planning_db
     await _set_role(db, "viewer")
     before = {
-        "password": await _fetch_one(db, "SELECT password_hash FROM accounts WHERE id = 1"),
         "household": await _fetch_one(db, "SELECT name FROM households WHERE id = 1"),
-        "user": await _fetch_one(db, "SELECT name, language FROM users WHERE id = 1"),
-        "preferences": await _fetch_one(
-            db, "SELECT digest_enabled, digest_time FROM notification_preferences WHERE account_id = 1",
-        ),
-        "push": await _fetch_one(db, "SELECT endpoint FROM push_subscriptions WHERE id = 1"),
         "subscription": await _fetch_one(
             db, "SELECT revoked_at FROM calendar_subscriptions WHERE account_id = 1",
         ),
@@ -270,23 +276,7 @@ async def test_viewer_mutations_are_rejected_before_account_household_and_planni
     )
 
     responses = await asyncio.gather(
-        client.post(
-            "/api/auth/change-password",
-            json={"current_password": "current-password", "new_password": "blocked-password"},
-            headers=_header(),
-        ),
         client.patch("/api/household", json={"name": "Blocked household"}, headers=_header()),
-        client.patch("/api/users/1/language", json={"language": "en"}, headers=_header()),
-        client.put(
-            "/api/settings/notifications",
-            json={"digest_enabled": True, "digest_time": "19:00"},
-            headers=_header(),
-        ),
-        client.post(
-            "/api/push/subscription",
-            json={"endpoint": "https://fcm.googleapis.com/fcm/send/blocked", "keys": {"p256dh": "key", "auth": "auth"}},
-            headers=_header(),
-        ),
         client.delete("/api/calendar/subscription", headers=_header()),
         client.post(
             "/api/care-rhythm/apply",
@@ -305,16 +295,7 @@ async def test_viewer_mutations_are_rejected_before_account_household_and_planni
     )
 
     assert [response.status_code for response in responses] == [403] * len(responses)
-    assert await _fetch_one(db, "SELECT password_hash FROM accounts WHERE id = 1") == before["password"]
     assert await _fetch_one(db, "SELECT name FROM households WHERE id = 1") == before["household"]
-    assert await _fetch_one(db, "SELECT name, language FROM users WHERE id = 1") == before["user"]
-    assert (
-        await _fetch_one(
-            db, "SELECT digest_enabled, digest_time FROM notification_preferences WHERE account_id = 1",
-        )
-        == before["preferences"]
-    )
-    assert await _fetch_one(db, "SELECT endpoint FROM push_subscriptions WHERE id = 1") == before["push"]
     assert (
         await _fetch_one(db, "SELECT revoked_at FROM calendar_subscriptions WHERE account_id = 1")
         == before["subscription"]
@@ -362,3 +343,50 @@ async def test_viewer_read_routes_remain_available(client, household_account_pla
     assert members.json()[0]["name"] == "Test"
     assert subscription.json()["active"] is True
     assert discoveries.json()[0]["common_name"] == "Original discovery"
+
+
+@pytest.mark.asyncio
+async def test_viewer_can_change_their_own_notifications_language_and_password(
+    client, household_account_planning_db,
+):
+    db = household_account_planning_db
+    await _set_role(db, "viewer")
+
+    preferences = await client.put(
+        "/api/settings/notifications",
+        json={"digest_enabled": True, "digest_time": "19:00"},
+        headers=_header(),
+    )
+    push = await client.post(
+        "/api/push/subscription",
+        json={"endpoint": "https://fcm.googleapis.com/fcm/send/viewer", "keys": {"p256dh": "key", "auth": "auth"}},
+        headers=_header(),
+    )
+    language = await client.patch("/api/users/1/language", json={"language": "en"}, headers=_header())
+    password = await client.post(
+        "/api/auth/change-password",
+        json={"current_password": "current-password", "new_password": "viewer-password"},
+        headers=_header(),
+    )
+
+    assert [preferences.status_code, push.status_code, language.status_code, password.status_code] == [200] * 4
+    assert (await _fetch_one(db, "SELECT digest_enabled FROM notification_preferences WHERE account_id = 1"))["digest_enabled"] == 1
+    assert (await _fetch_one(db, "SELECT language FROM users WHERE id = 1"))["language"] == "en"
+    rows = await db.execute_fetchall(
+        "SELECT account_id FROM push_subscriptions WHERE endpoint = 'https://fcm.googleapis.com/fcm/send/viewer'"
+    )
+    assert [row["account_id"] for row in rows] == [1]
+
+
+@pytest.mark.asyncio
+async def test_viewer_cannot_change_another_members_language(client, household_account_planning_db):
+    db = household_account_planning_db
+    await db.execute("INSERT INTO accounts (id, household_id, email, name, password_hash, role) VALUES (2, 1, 'b@example.com', 'Other', 'x', 'editor')")
+    await db.execute("INSERT INTO users (id, name, household_id, language, account_id) VALUES (2, 'Other', 1, 'nl', 2)")
+    await db.commit()
+    await _set_role(db, "viewer")
+
+    response = await client.patch("/api/users/2/language", json={"language": "en"}, headers=_header())
+
+    assert response.status_code == 403
+    assert (await _fetch_one(db, "SELECT language FROM users WHERE id = 2"))["language"] == "nl"
