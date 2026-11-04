@@ -17,6 +17,14 @@ logger = logging.getLogger(__name__)
 THUMB_MAX_EDGE = 480
 THUMB_QUALITY = 78
 
+#: Refuse to decode anything larger. The app's own uploads are at most
+#: 1600 px (the client resizes before sending), but a small file can declare
+#: enormous dimensions, and decoding a 100-megapixel RGBA image would take far
+#: more than the 256 MB the backend machine has. Pillow's own bomb guard only
+#: trips around 179 MP. JPEGs are decoded at a reduced scale first (`draft`),
+#: so a large phone photo still gets a thumbnail.
+MAX_SOURCE_PIXELS = 25_000_000
+
 #: Photo and thumbnail keys are unique per upload (services.uploads.storage_key)
 #: and never rewritten, so browsers may keep them for a year without asking.
 IMMUTABLE_CACHE = "public, max-age=31536000, immutable"
@@ -36,6 +44,12 @@ def make_thumbnail(data: bytes) -> bytes | None:
     """
     try:
         with Image.open(io.BytesIO(data)) as image:
+            if image.format == "JPEG":
+                image.draft("RGB", (THUMB_MAX_EDGE * 2, THUMB_MAX_EDGE * 2))
+            width, height = image.size
+            if width * height > MAX_SOURCE_PIXELS:
+                logger.warning("Not making a thumbnail of a %dx%d image", width, height)
+                return None
             image = ImageOps.exif_transpose(image)
             image.thumbnail((THUMB_MAX_EDGE, THUMB_MAX_EDGE))
             if image.mode not in ("RGB", "L"):

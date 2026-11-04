@@ -73,6 +73,22 @@ def test_thumbnail_is_small_jpeg_and_upright():
     assert len(thumb) < 60_000
 
 
+def test_an_image_declaring_huge_dimensions_is_not_decoded():
+    # 7000 x 5000 = 35 MP, but a 1-bit PNG of one colour is a few KB: the
+    # shape of a decompression bomb. It must be refused before decoding.
+    out = io.BytesIO()
+    Image.new("1", (7000, 5000)).save(out, format="PNG")
+    assert len(out.getvalue()) < 100_000
+    assert make_thumbnail(out.getvalue()) is None
+
+
+def test_a_large_phone_jpeg_still_gets_a_thumbnail():
+    # Decoded at reduced scale, so 6000 x 4500 (27 MP) stays within the cap.
+    thumb = make_thumbnail(_jpeg(6000, 4500))
+    with Image.open(io.BytesIO(thumb)) as image:
+        assert max(image.size) == THUMB_MAX_EDGE
+
+
 def test_unreadable_bytes_give_no_thumbnail():
     assert make_thumbnail(b"\xff\xd8\xffnot really a jpeg") is None
 
