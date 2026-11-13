@@ -1,6 +1,14 @@
 {
   "rewrites": [
     {
+      "source": "/jaarquiz",
+      "destination": "/jaarquiz/index.html"
+    },
+    {
+      "source": "/jaarquiz/",
+      "destination": "/jaarquiz/index.html"
+    },
+    {
       "source": "/api/(.*)",
       "destination": "https://floreren-api.fly.dev/api/$1"
     },

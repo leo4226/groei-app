@@ -146,6 +146,10 @@ The contract, the stdlib client (`floreren_sync.py`) and the brief for LAveren's
 - **Scopes are fixed at creation.** `read` covers the snapshot and thumbnails. `care` adds `care/done`, which reuses `routers.care.mark_care_done` as the token's account and stops working if that account becomes a viewer. A wider scope means a new token. Never widen an existing one.
 - **Cheap and cached.** No LLM, R2 or PlantNet calls. Weather comes from the shared 1-hour Open-Meteo cache and biodiversity from `garden_biodiversity.compute_for_map`. Both fail soft to `null`. Responses are cached in-process for 15 min per token with ETags, so a polling dashboard doesn't keep Neon awake. `care/done` drops the household's cached entries. Add new fields only if they stay cheap, and bump `schema_version` only for breaking changes.
 
+## Jaarquiz (floreren.app/jaarquiz)
+
+A standalone ranking quiz for Leon's group of friends, not part of the plant app. One static page (`frontend/public/jaarquiz/index.html`, Dutch only, no third-party scripts because it shares the origin and so the admin's token) and `routers/jaarquiz.py` (migration 0084). Names, photos and questions are config in the database, never in this public repo; Leon loads them at `/jaarquiz#beheer` with his admin login. Participants use `/jaarquiz#<invite code>`, claim a name once and get a token whose hash is stored. Answers stay private; after the reveal only averages are served.
+
 ## Languages (NL/EN)
 
 The app is fully bilingual Dutch/English; `accounts.language` ('nl'|'en') drives the UI. Rules for **every** user-facing feature (2026-07 language audit — a big NL/EN-mixing cleanup — is the origin of all of these):
