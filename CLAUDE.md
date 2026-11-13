@@ -148,7 +148,7 @@ The contract, the stdlib client (`floreren_sync.py`) and the brief for LAveren's
 
 ## Jaarquiz (floreren.app/jaarquiz)
 
-A standalone ranking quiz for Leon's group of friends, not part of the plant app. One static page (`frontend/public/jaarquiz/index.html`, Dutch only, no third-party scripts because it shares the origin and so the admin's token) and `routers/jaarquiz.py` (migration 0084). Names, photos and questions are config in the database, never in this public repo; Leon loads them at `/jaarquiz#beheer` with his admin login. Participants use `/jaarquiz#<invite code>`, claim a name once and get a token whose hash is stored. Answers stay private; after the reveal only averages are served.
+A standalone ranking quiz for Leon's group of friends, not part of the plant app. One static page (`frontend/public/jaarquiz/index.html`, Dutch only, no third-party scripts because it shares the origin and so the admin's token) and `routers/jaarquiz.py` (migration 0084). Names, photos and questions are config in the database, never in this public repo; Leon loads them at `/jaarquiz#beheer` with his admin login. Participants use `/jaarquiz#<invite code>`, claim a name once and get a token whose hash is stored. Answers stay private; after the reveal only averages are served. `/jaarquiz#presenteer` (admin) is a slideshow for the quiz night: places revealed 10→1 per question, a synthesized drumroll and canvas confetti for #1, then awards.
 
 ## Languages (NL/EN)
 

@@ -31,7 +31,7 @@ CONFIG = {
     "title": "Test",
     "people": [{"name": n} for n in PEOPLE],
     "questions": [
-        {"id": "weird", "text": "Wie is het raarst?"},
+        {"id": "weird", "text": "Wie is het raarst?", "top": "raarst", "bottom": "normaalst"},
         {"id": "others", "text": "Rank deze", "options": ["X", "Y"]},
     ],
     "liar": {"name": "Ann", "message": "Nee"},
@@ -178,3 +178,10 @@ def test_self_knowledge_compares_own_place_with_the_others():
     ]
     sk = {row["name"]: row["off_by"] for row in compute_results(config, responses)["self_knowledge"]}
     assert sk["Ann"] == 2.0 and sk["Bob"] == 0.0
+
+
+@pytest.mark.asyncio
+async def test_end_labels_reach_participants(client, admin_header):
+    code = await _setup(client, admin_header)
+    q = (await client.get(f"/api/jaarquiz/{code}")).json()["questions"][0]
+    assert (q["top"], q["bottom"]) == ("raarst", "normaalst")
