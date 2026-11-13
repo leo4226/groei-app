@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Jaarquiz</title>
+<!--
+  Jaarquiz — a ranking quiz for a group of friends. Standalone on purpose: it
+  is not part of the plant app and loads nothing from it, and it loads no
+  third-party scripts, because this page shares floreren.app's origin (and so
+  the admin's login token in localStorage).
+  Backend: backend/routers/jaarquiz.py. Names, photos and questions come from
+  the database (the repo is public), loaded by the admin at #beheer.
+  Participants: /jaarquiz#<invite code>. Dutch only: it is a private party game.
+-->
+<style>
+  :root{
+    --bg:#14121f; --panel:#1e1b2e; --panel2:#272340; --line:#36315a;
+    --text:#f3f0ff; --muted:#a39dc4; --accent:#ffcc4d; --accent2:#ff6f91; --good:#5ee6a8;
+    --r:14px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  body{min-height:100vh}
+  .wrap{max-width:560px;margin:0 auto;padding:16px 16px 48px}
+  header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:18px}
+  .logo{font-weight:800;font-size:20px;letter-spacing:-.02em}
+  .logo span{color:var(--accent)}
+  nav{display:flex;gap:6px}
+  nav button{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:6px 12px;font:inherit;font-size:13px;cursor:pointer}
+  nav button.on{background:var(--panel2);color:var(--text);border-color:var(--accent)}
+  h1{font-size:27px;line-height:1.15;letter-spacing:-.02em;margin:6px 0 10px;font-weight:800}
+  h2{font-size:18px;margin:0 0 10px;font-weight:700}
+  p{color:var(--muted);line-height:1.5;margin:0 0 14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:14px}
+  .btn{background:var(--accent);color:#1b1630;border:0;border-radius:12px;padding:13px 18px;font:inherit;font-weight:700;font-size:16px;cursor:pointer;width:100%}
+  .btn:disabled{opacity:.4;cursor:default}
+  .btn.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
+  .btn.small{width:auto;padding:7px 12px;font-size:13px}
+  .row{display:flex;gap:10px}
+  .row > *{flex:1}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+  .pick{display:flex;align-items:center;gap:10px;background:var(--panel2);border:1.5px solid var(--line);color:var(--text);border-radius:12px;padding:10px;font:inherit;font-size:15px;cursor:pointer;text-align:left}
+  .pick.on{border-color:var(--accent);background:#3a3050}
+  .pick:disabled{opacity:.35;cursor:default}
+  .pick small{color:var(--muted);font-size:12px;margin-left:auto}
+  .av{width:32px;height:32px;border-radius:50%;object-fit:cover;flex:none;background:var(--line);display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:var(--text)}
+  .progress{height:6px;background:var(--panel2);border-radius:99px;overflow:hidden;margin-bottom:14px}
+  .progress > div{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .3s}
+  .qnum{color:var(--accent);font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.08em}
+  .hint{font-size:13px;color:var(--muted);margin:-4px 0 12px}
+  .sub{color:var(--accent);font-weight:600}
+  .rank{display:grid;grid-template-columns:30px 1fr;gap:8px;margin-bottom:6px}
+  .nums,.list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+  .nums li{height:50px;display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--muted);font-size:15px}
+  .nums li:first-child{color:var(--accent)}
+  .nums li:last-child{color:var(--accent2)}
+  .list{position:relative}
+  .list li{height:50px;display:flex;align-items:center;gap:10px;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:0 4px 0 10px;user-select:none;-webkit-user-select:none;touch-action:none;cursor:grab;position:relative}
+  .list li.dragging{z-index:5;border-color:var(--accent);background:#3a3050;box-shadow:0 8px 24px rgba(0,0,0,.45);cursor:grabbing}
+  .list li.shift{transition:transform .15s}
+  .list li .grip{color:var(--muted);font-size:18px;line-height:1}
+  .list li .nm{flex:1;font-size:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .list li .mv{background:transparent;border:0;color:var(--muted);font-size:14px;width:32px;height:40px;border-radius:8px;cursor:pointer;touch-action:manipulation}
+  .list li .mv:active{background:var(--line)}
+  .list li.me .nm::after{content:" (jij)";color:var(--muted);font-weight:400;font-size:13px}
+  .ends{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin:0 0 14px 38px}
+  .err{background:#4a1f2e;border:1px solid var(--accent2);color:#ffd6e0;border-radius:12px;padding:12px;margin-bottom:14px;font-size:14px}
+  .note{background:#2b2540;border:1px solid var(--accent);color:var(--text);border-radius:12px;padding:12px;margin-bottom:14px;font-size:14px}
+  .big{font-size:56px;text-align:center;margin:10px 0}
+  .res{list-style:none;margin:0;padding:0}
+  .res li{display:grid;grid-template-columns:26px 1fr auto;align-items:center;gap:8px;padding:5px 0}
+  .res .pos{font-weight:800;color:var(--muted);text-align:center}
+  .res li:first-child .pos{color:var(--accent)}
+  .res .barwrap{position:relative;height:30px;background:var(--panel2);border-radius:8px;overflow:hidden}
+  .res .bar{position:absolute;inset:0 auto 0 0;background:linear-gradient(90deg,#4b3f7a,#6a55b0);border-radius:8px}
+  .res li:first-child .bar{background:linear-gradient(90deg,#b8862a,var(--accent))}
+  .res .who{display:flex;align-items:center;gap:8px;position:relative;height:30px;padding-left:4px;font-weight:600;font-size:14px}
+  .res .who .av{width:24px;height:24px;font-size:11px}
+  .res li:first-child .who{color:#1b1630}
+  .res .avg{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;min-width:34px;text-align:right}
+  .meta{font-size:13px;color:var(--muted);margin-top:10px}
+  .meta b{color:var(--text)}
+  textarea,input[type=text]{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:10px 12px;font:inherit;font-size:14px}
+  textarea{min-height:120px;font-family:ui-monospace,monospace;font-size:12px}
+  .toggle{display:flex;align-items:center;gap:10px;font-size:15px;cursor:pointer;margin:6px 0 12px}
+  .toggle input{width:20px;height:20px;accent-color:var(--accent)}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  td{padding:7px 4px;border-bottom:1px solid var(--line);vertical-align:middle}
+  td.r{text-align:right;color:var(--muted)}
+  .ok{color:var(--good)!important}
+  code.link{display:block;word-break:break-all;background:var(--panel2);padding:10px;border-radius:10px;font-size:13px;margin-bottom:10px}
+  .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--accent);padding:10px 16px;border-radius:12px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:60}
+  .toast.show{opacity:1}
+  .modal{position:fixed;inset:0;background:rgba(10,8,20,.75);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px;animation:fade .15s}
+  .modal .box{background:var(--panel);border:2px solid var(--accent2);border-radius:18px;padding:24px 20px;max-width:340px;text-align:center;animation:shake .45s}
+  .modal .box .big{margin:0 0 6px}
+  .modal .box h2{font-size:24px;margin:0 0 16px}
+  @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-12px) rotate(-2deg)}40%{transform:translateX(10px) rotate(2deg)}60%{transform:translateX(-6px)}80%{transform:translateX(4px)}}
+  @keyframes fade{from{opacity:0}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo" id="logo">Jaar<span>.</span>quiz</div>
+    <nav id="nav"></nav>
+  </header>
+  <main id="app"><div class="card"><p>Laden…</p></div></main>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+const ERRORS = {
+  quiz_not_found: "Deze quizlink klopt niet (meer). Vraag om de nieuwe link.",
+  voter_taken: "Die naam is al gekozen. Ben jij het echt? Vraag dan de beheerder om hem vrij te geven.",
+  unknown_voter: "Die naam staat niet in de quiz.",
+  token_invalid: "Je sessie is verlopen of je naam is vrijgegeven. Kies je naam opnieuw.",
+  token_required: "Kies eerst wie je bent.",
+  invalid_order: "Er ging iets mis met de volgorde. Herlaad de pagina.",
+  quiz_closed: "De uitslag is al bekend, dus je kunt niets meer aanpassen.",
+  not_revealed: "De uitslag is nog geheim.",
+  config_too_large: "De configuratie is te groot (te veel of te grote foto's).",
+};
+
+/* ---------- helpers ---------- */
+const app = document.getElementById("app"), navEl = document.getElementById("nav");
+function el(tag, attrs, ...kids){
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})){
+    if (v == null || v === false) continue;
+    if (k === "class") e.className = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+    else if (k === "style") e.style.cssText = v;
+    else e.setAttribute(k, v === true ? "" : v);
+  }
+  for (const c of kids.flat()){ if (c == null || c === false) continue; e.append(c instanceof Node ? c : document.createTextNode(String(c))); }
+  return e;
+}
+function toast(msg){ const t = document.getElementById("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("show"), 2400); }
+function shuffle(a){ a = a.slice(); for (let i = a.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function store(key, val){ try{ if (val === undefined) return JSON.parse(localStorage.getItem(key) || "null"); if (val === null) localStorage.removeItem(key); else localStorage.setItem(key, JSON.stringify(val)); }catch(e){ return null; } }
+
+async function api(method, path, body, headers){
+  const res = await fetch("/api/jaarquiz" + path, {
+    method, headers: { "Content-Type": "application/json", ...(headers || {}) },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  let data = null; try{ data = await res.json(); }catch(e){}
+  if (!res.ok){
+    const code = data && typeof data.detail === "string" ? data.detail : "";
+    const err = new Error(ERRORS[code] || (res.status === 401 || res.status === 403 ? "Geen toegang." : "Er ging iets mis (" + res.status + "). Probeer het zo nog eens."));
+    err.status = res.status; err.code = code; throw err;
+  }
+  return data;
+}
+
+/* ---------- state ---------- */
+const hash = decodeURIComponent(location.hash.replace(/^#/, ""));
+const ADMIN = hash === "beheer";
+const CODE = ADMIN ? "" : hash;
+const KEY = "jaarquiz:" + CODE;
+
+let quiz = null;        // {title, people, questions, liar, revealed, taken}
+let session = null;     // {token, voter}
+let mine = null;        // {voter, answers, done}
+let drafts = {};
+let view = "loading", qi = 0, picked = null, errorMsg = "", busy = false;
+let results = null, admin = null;
+let liarDone = !!store("jaarquiz:liar");
+
+const photos = () => Object.fromEntries((quiz?.people || []).map(p => [p.name, p.photo]));
+function av(n){ const ph = photos()[n]; return ph ? el("img", { class: "av", src: ph, alt: "" }) : el("span", { class: "av" }, String(n).slice(0, 1).toUpperCase()); }
+const names = () => (quiz?.people || []).map(p => p.name);
+const optionsFor = q => q.options || names();
+const firstOpen = () => { const i = quiz.questions.findIndex(q => !(mine?.answers && Array.isArray(mine.answers[q.id]))); return i < 0 ? 0 : i; };
+function cleanOrder(order, opts){
+  const out = [];
+  (Array.isArray(order) ? order : []).forEach(n => { if (opts.includes(n) && !out.includes(n)) out.push(n); });
+  opts.forEach(n => { if (!out.includes(n)) out.push(n); });
+  return out;
+}
+
+/* ---------- render ---------- */
+function renderNav(){
+  navEl.replaceChildren();
+  if (ADMIN || !quiz || !session) return;
+  const tabs = [["fill", "Invullen"]];
+  if (quiz.revealed) tabs.push(["results", "Uitslag"]);
+  if (tabs.length < 2) return;
+  tabs.forEach(([v, label]) => {
+    const on = (v === "fill" && ["intro", "q", "done"].includes(view)) || v === view;
+    navEl.append(el("button", { class: on ? "on" : "", onclick: () => go(v) }, label));
+  });
+}
+function render(){
+  renderNav();
+  const fns = { loading: vLoading, nocode: vNoCode, intro: vIntro, q: vQuestion, done: vDone, results: vResults, admin: vAdmin, adminLogin: vAdminLogin };
+  app.replaceChildren(...[].concat(errorMsg ? el("div", { class: "err" }, errorMsg) : [], fns[view]()));
+}
+async function go(v){
+  errorMsg = "";
+  if (v === "results"){ await loadResults(); view = "results"; }
+  else { view = mine?.done ? "done" : (session ? "q" : "intro"); if (view === "q") qi = firstOpen(); }
+  render();
+}
+
+function vLoading(){ return el("div", { class: "card" }, el("p", {}, "Laden…")); }
+function vNoCode(){
+  return el("div", { class: "card" }, el("h2", {}, "Geen quiz gevonden"),
+    el("p", {}, "Open de quiz via de link die je hebt gekregen. Die eindigt op #gevolgd-door-een-code."));
+}
+
+function vIntro(){
+  const grid = el("div", { class: "grid" });
+  names().forEach(n => {
+    const taken = quiz.taken.includes(n);
+    grid.append(el("button", { class: "pick" + (picked === n ? " on" : ""), disabled: taken,
+      onclick: () => { picked = n; render(); } }, av(n), n, taken ? el("small", {}, "bezet") : null));
+  });
+  return el("div", {},
+    el("h1", {}, quiz.title || "Rank je jaargenoten"),
+    el("p", {}, `${quiz.questions.length} vragen. Bij elke vraag sleep je alle namen op volgorde: bovenaan = meest, onderaan = minst. Jezelf ranken hoort er ook bij.`),
+    el("div", { class: "card" }, el("h2", {}, "Wie ben jij?"),
+      el("p", { style: "font-size:13px;margin-top:-4px" }, "Elke naam kan maar één keer gekozen worden."),
+      grid,
+      el("button", { class: "btn", disabled: !picked || busy, onclick: join }, "Start")));
+}
+async function join(){
+  busy = true; errorMsg = ""; render();
+  try{
+    const r = await api("POST", `/${encodeURIComponent(CODE)}/join`, { voter: picked });
+    session = { token: r.token, voter: r.voter };
+    store(KEY, session);
+    mine = { voter: r.voter, answers: {}, done: false };
+    qi = 0; view = "q";
+  }catch(e){
+    errorMsg = e.message;
+    if (e.code === "voter_taken"){ try{ quiz = await api("GET", `/${encodeURIComponent(CODE)}`); }catch(_){} picked = null; }
+  }
+  busy = false; render();
+}
+
+function showLiar(){
+  const m = el("div", { class: "modal" }, el("div", { class: "box" },
+    el("div", { class: "big" }, "🤥"),
+    el("h2", {}, quiz.liar.message),
+    el("button", { class: "btn", onclick: () => m.remove() }, "Sorry " + quiz.liar.name)));
+  document.body.append(m);
+}
+function markLiar(){ liarDone = true; store("jaarquiz:liar", true); }
+
+/* drag to reorder: pointer events, no library */
+function makeSortable(list, onChange){
+  let drag = null;
+  list.addEventListener("pointerdown", ev => {
+    if (ev.target.closest(".mv")) return;
+    const li = ev.target.closest("li"); if (!li) return;
+    ev.preventDefault();
+    const items = [...list.children];
+    const rects = items.map(x => x.getBoundingClientRect());
+    drag = { li, startY: ev.clientY, from: items.indexOf(li), to: items.indexOf(li), items, rects, step: rects.length > 1 ? rects[1].top - rects[0].top : 56 };
+    li.classList.add("dragging"); li.setPointerCapture(ev.pointerId);
+    items.forEach(x => { if (x !== li) x.classList.add("shift"); });
+  });
+  list.addEventListener("pointermove", ev => {
+    if (!drag) return;
+    const dy = ev.clientY - drag.startY;
+    const n = drag.items.length;
+    const to = Math.max(0, Math.min(n - 1, drag.from + Math.round(dy / drag.step)));
+    drag.li.style.transform = `translateY(${dy}px)`;
+    if (to !== drag.to){
+      drag.to = to;
+      drag.items.forEach((x, i) => {
+        if (x === drag.li) return;
+        let shift = 0;
+        if (drag.from < to && i > drag.from && i <= to) shift = -drag.step;
+        if (drag.from > to && i < drag.from && i >= to) shift = drag.step;
+        x.style.transform = shift ? `translateY(${shift}px)` : "";
+      });
+    }
+  });
+  const end = () => {
+    if (!drag) return;
+    const { li, from, to, items } = drag; drag = null;
+    items.forEach(x => { x.style.transform = ""; x.classList.remove("shift", "dragging"); });
+    if (to !== from){
+      const ref = items.filter(x => x !== li)[to];
+      list.insertBefore(li, ref || null);
+      onChange();
+    }
+  };
+  list.addEventListener("pointerup", end);
+  list.addEventListener("pointercancel", end);
+}
+
+function vQuestion(){
+  const q = quiz.questions[qi];
+  const opts = optionsFor(q);
+  const order = drafts[q.id] || cleanOrder(mine.answers[q.id] || shuffle(opts), opts);
+  drafts[q.id] = order;
+  const nums = el("ol", { class: "nums" }, order.map((_, i) => el("li", {}, i + 1)));
+  const list = el("ul", { class: "list" });
+  const liar = quiz.liar && !q.options ? quiz.liar.name : null;
+  let prev = order.slice();
+  const sync = () => {
+    const cur = [...list.children].map(li => li.dataset.name);
+    if (liar && !liarDone && cur[cur.length - 1] === liar && prev[prev.length - 1] !== liar){
+      markLiar(); drafts[q.id] = prev; render(); showLiar(); return;
+    }
+    drafts[q.id] = cur; prev = cur.slice();
+  };
+  const move = (li, dir) => {
+    const sib = dir < 0 ? li.previousElementSibling : li.nextElementSibling;
+    if (!sib) return;
+    dir < 0 ? list.insertBefore(li, sib) : list.insertBefore(sib, li);
+    sync();
+  };
+  order.forEach(n => {
+    const up = el("button", { class: "mv", "aria-label": "omhoog" }, "▲");
+    const down = el("button", { class: "mv", "aria-label": "omlaag" }, "▼");
+    const li = el("li", { class: (!q.options && n === mine.voter) ? "me" : "", "data-name": n },
+      el("span", { class: "grip" }, "⠿"), av(n), el("span", { class: "nm" }, n), up, down);
+    up.addEventListener("click", e => { e.stopPropagation(); move(li, -1); });
+    down.addEventListener("click", e => { e.stopPropagation(); move(li, 1); });
+    list.append(li);
+  });
+  makeSortable(list, sync);
+
+  const last = qi === quiz.questions.length - 1;
+  const next = async dir => {
+    sync();
+    const cur = drafts[q.id];
+    if (dir > 0 && liar && !liarDone && cur[cur.length - 1] === liar){ markLiar(); showLiar(); return; }
+    const answers = { ...mine.answers, [q.id]: cur.slice() };
+    busy = true; errorMsg = "";
+    try{
+      mine = await api("PUT", `/${encodeURIComponent(CODE)}/me`, { answers, done: dir > 0 && last }, { "X-Quiz-Token": session.token });
+    }catch(e){
+      busy = false; errorMsg = e.message;
+      if (e.code === "token_invalid"){ store(KEY, null); session = null; mine = null; view = "intro"; }
+      render(); return;
+    }
+    busy = false;
+    if (dir > 0 && last){
+      if (mine.done) view = "done";
+      else { qi = firstOpen(); errorMsg = "Je hebt nog niet alle vragen ingevuld."; }
+    } else qi = Math.max(0, Math.min(quiz.questions.length - 1, qi + dir));
+    render(); window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+  return el("div", {},
+    el("div", { class: "progress" }, el("div", { style: `width:${(qi / quiz.questions.length) * 100}%` })),
+    el("div", { class: "qnum" }, `Vraag ${qi + 1} van ${quiz.questions.length}`),
+    el("h1", {}, q.text),
+    q.sub ? el("p", { class: "sub" }, q.sub) : null,
+    el("p", { class: "hint" }, "Sleep de namen (of gebruik ▲▼). Bovenaan = meest."),
+    el("div", { class: "rank" }, nums, list),
+    el("div", { class: "ends" }, el("span", {}, "↑ meest"), el("span", {}, "minst ↓")),
+    el("div", { class: "row" },
+      el("button", { class: "btn ghost", disabled: qi === 0 || busy, onclick: () => next(-1) }, "← Vorige"),
+      el("button", { class: "btn", disabled: busy, onclick: () => next(1) }, last ? "Insturen 🎉" : "Volgende →")));
+}
+
+function vDone(){
+  return el("div", {},
+    el("div", { class: "big" }, "🍻"),
+    el("h1", { style: "text-align:center" }, "Ingestuurd, " + mine.voter + "!"),
+    el("p", { style: "text-align:center" }, quiz.revealed ? "De uitslag is bekend." : "De uitslag blijft geheim tot de quizavond. Tot die tijd kun je je antwoorden nog aanpassen."),
+    el("div", { class: "row" },
+      quiz.revealed ? null : el("button", { class: "btn ghost", onclick: () => { qi = 0; view = "q"; render(); } }, "Antwoorden aanpassen"),
+      quiz.revealed ? el("button", { class: "btn", onclick: () => go("results") }, "Bekijk uitslag") : null));
+}
+
+/* ---------- results ---------- */
+async function loadResults(){
+  try{ results = await api("GET", `/${encodeURIComponent(CODE)}/results`); }
+  catch(e){ results = null; errorMsg = e.message; }
+}
+function resultsView(R, questions){
+  const out = [el("p", {}, `${R.done} van de ${R.participants} deelnemers zijn helemaal klaar.`)];
+  if (!R.participants){ out.push(el("div", { class: "card" }, el("p", {}, "Nog geen antwoorden."))); return out; }
+  R.questions.forEach((res, i) => {
+    const q = questions.find(x => x.id === res.id) || { text: res.id };
+    const n = Math.max(res.rows.length, 1);
+    const ul = el("ul", { class: "res" });
+    res.rows.forEach((r, j) => ul.append(el("li", {},
+      el("span", { class: "pos" }, j + 1),
+      el("div", { class: "barwrap" },
+        el("div", { class: "bar", style: `width:${Math.max(6, (n + 1 - r.avg) / n * 100)}%` }),
+        el("div", { class: "who" }, av(r.name), el("span", {}, r.name))),
+      el("span", { class: "avg" }, r.avg.toFixed(1)))));
+    const hot = res.rows.slice().sort((a, b) => (b.max - b.min) - (a.max - a.min))[0];
+    out.push(el("div", { class: "card" },
+      el("div", { class: "qnum" }, `Vraag ${i + 1} · ${res.votes} stemmen`),
+      el("h2", { style: "margin-top:4px" }, q.text), ul,
+      hot && hot.max - hot.min >= 4 ? el("div", { class: "meta" }, "🔥 Meeste discussie: ", el("b", {}, hot.name), ` (van #${hot.min} tot #${hot.max})`) : null));
+  });
+  if (R.self_knowledge.length){
+    const t = el("table", {});
+    R.self_knowledge.forEach((s, i) => t.append(el("tr", {}, el("td", {}, (i === 0 ? "🪞 " : "") + s.name), el("td", { class: "r" }, `${s.off_by.toFixed(1)} plekken ernaast`))));
+    out.push(el("div", { class: "card" }, el("h2", {}, "Zelfkennis"),
+      el("p", {}, "Hoe ver zat je eigen plek gemiddeld af van hoe de anderen jou rankten? Laag = je kent jezelf."), t));
+  }
+  return out;
+}
+function vResults(){
+  if (!results) return el("div", { class: "card" }, el("div", { class: "big" }, "🔒"), el("h2", { style: "text-align:center" }, "Nog geheim"));
+  return el("div", {}, resultsView(results, quiz.questions));
+}
+
+/* ---------- admin (#beheer) ---------- */
+const adminToken = () => { try{ return localStorage.getItem("floreren-token"); }catch(e){ return null; } };
+const adminHeaders = () => ({ Authorization: "Bearer " + adminToken() });
+function vAdminLogin(){
+  return el("div", { class: "card" }, el("h2", {}, "Beheer"),
+    el("p", {}, "Log eerst in op floreren.app met je admin-account en open daarna deze pagina opnieuw."),
+    el("a", { href: "/", class: "btn", style: "display:block;text-align:center;text-decoration:none" }, "Naar floreren.app"));
+}
+async function loadAdmin(){
+  if (!adminToken()){ view = "adminLogin"; return; }
+  try{
+    admin = await api("GET", "/admin", undefined, adminHeaders());
+    quiz = admin.exists ? admin.config : null;
+    view = "admin";
+  }catch(e){
+    if (e.status === 401 || e.status === 403){ view = "adminLogin"; errorMsg = e.status === 403 ? "Dit account is geen admin." : ""; }
+    else { view = "admin"; errorMsg = e.message; }
+  }
+}
+async function saveAdmin(config, revealed, joinCode){
+  try{
+    admin = await api("PUT", "/admin", { config, revealed, join_code: joinCode }, adminHeaders());
+    quiz = admin.config; toast("Opgeslagen"); errorMsg = "";
+  }catch(e){ errorMsg = e.status === 422 ? "De configuratie klopt niet: controleer namen, vragen en foto's." : e.message; }
+  render();
+}
+function vAdmin(){
+  const out = [el("h1", {}, "Beheer")];
+  const ta = el("textarea", { placeholder: '{"title": "…", "people": [{"name": "…", "photo": "data:image/jpeg;base64,…"}], "questions": [{"id": "q1", "text": "…"}], "liar": {"name": "…", "message": "…"}}' });
+  const file = el("input", { type: "file", accept: "application/json,.json" });
+  file.addEventListener("change", async () => { const f = file.files[0]; if (f) ta.value = await f.text(); });
+  if (admin?.exists) ta.value = JSON.stringify(admin.config, null, 2);
+  const importBtn = el("button", { class: "btn", onclick: () => {
+    let cfg; try{ cfg = JSON.parse(ta.value); }catch(e){ errorMsg = "Dat is geen geldige JSON."; return render(); }
+    saveAdmin(cfg, !!admin?.revealed);
+  } }, admin?.exists ? "Configuratie opslaan" : "Quiz aanmaken");
+
+  if (admin?.exists){
+    const link = location.origin + "/jaarquiz#" + admin.join_code;
+    const rev = el("input", { type: "checkbox" }); rev.checked = admin.revealed;
+    rev.addEventListener("change", () => saveAdmin(admin.config, rev.checked));
+    out.push(el("div", { class: "card" }, el("h2", {}, "Uitnodigingslink"),
+      el("code", { class: "link" }, link),
+      el("div", { class: "row" },
+        el("button", { class: "btn small", onclick: async () => { try{ await navigator.clipboard.writeText(link); toast("Link gekopieerd"); }catch(e){ toast("Kopiëren lukte niet"); } } }, "Kopieer link"),
+        el("button", { class: "btn small ghost", onclick: () => saveAdmin(admin.config, admin.revealed, "new") }, "Nieuwe link (oude vervalt)")),
+      el("label", { class: "toggle" }, rev, "Uitslag zichtbaar voor iedereen"),
+      el("p", { style: "font-size:13px;margin:0" }, "Zolang de uitslag geheim is, ziet iedereen alleen zijn eigen antwoorden. Zodra je hem vrijgeeft, kan niemand nog iets aanpassen en ziet iedereen de gemiddelden, nooit wie wat heeft ingevuld.")));
+
+    const t = el("table", {});
+    admin.responses.forEach(r => t.append(el("tr", {},
+      el("td", {}, r.voter),
+      el("td", { class: "r " + (r.done ? "ok" : "") }, r.done ? "klaar ✓" : `${r.answered}/${admin.config.questions.length}`),
+      el("td", { class: "r" }, el("button", { class: "btn small ghost", onclick: async () => {
+        try{ admin = await api("DELETE", "/admin/responses/" + encodeURIComponent(r.voter), undefined, adminHeaders()); toast(r.voter + " vrijgegeven"); }catch(e){ errorMsg = e.message; }
+        render();
+      } }, "Vrijgeven")))));
+    out.push(el("div", { class: "card" }, el("h2", {}, `Ingevuld (${admin.responses.length} van ${admin.config.people.length})`),
+      admin.responses.length ? t : el("p", {}, "Nog niemand."),
+      el("p", { style: "font-size:13px;margin:10px 0 0" }, "Vrijgeven wist die persoon zijn antwoorden, zodat de naam opnieuw gekozen kan worden.")));
+
+    out.push(el("div", { class: "note" }, admin.revealed ? "Live uitslag (ook zichtbaar voor deelnemers):" : "Live uitslag. Alleen jij ziet dit."));
+    out.push(...resultsView(admin.results, admin.config.questions));
+  }
+  out.push(el("div", { class: "card" }, el("h2", {}, admin?.exists ? "Configuratie" : "Nieuwe quiz"),
+    el("p", {}, "Namen, foto's en vragen als JSON. Laad een bestand of plak de tekst."), file, el("div", { style: "height:8px" }), ta,
+    el("div", { style: "height:10px" }), importBtn));
+  return el("div", {}, out);
+}
+
+/* ---------- boot ---------- */
+(async () => {
+  if (ADMIN){ await loadAdmin(); render(); return; }
+  if (!CODE){ view = "nocode"; render(); return; }
+  try{ quiz = await api("GET", `/${encodeURIComponent(CODE)}`); }
+  catch(e){ view = "nocode"; errorMsg = e.code === "quiz_not_found" ? "" : e.message; render(); return; }
+  document.title = quiz.title || "Jaarquiz";
+  session = store(KEY);
+  if (session?.token){
+    try{
+      mine = await api("GET", `/${encodeURIComponent(CODE)}/me`, undefined, { "X-Quiz-Token": session.token });
+    }catch(e){ if (e.status === 401){ store(KEY, null); session = null; } else errorMsg = e.message; }
+  }
+  if (session && mine){
+    if (quiz.revealed){ await loadResults(); view = "results"; }
+    else { view = mine.done ? "done" : "q"; qi = firstOpen(); }
+  } else view = "intro";
+  render();
+})();
+window.addEventListener("hashchange", () => location.reload());
+</script>
+</body>
+</html>
