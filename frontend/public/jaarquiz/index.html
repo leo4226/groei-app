@@ -2,7 +2,7 @@
 <html lang="nl">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
 <title>Jaarquiz</title>
 <!--
@@ -97,6 +97,27 @@
   .modal .box{background:var(--panel);border:2px solid var(--accent2);border-radius:18px;padding:24px 20px;max-width:340px;text-align:center;animation:shake .45s}
   .modal .box .big{margin:0 0 6px}
   .modal .box h2{font-size:24px;margin:0 0 16px}
+  /* Question screen: one phone screen, no scrolling. The list takes whatever
+     height is left and its ten rows share it (30-64 px each), so it fits an
+     iPhone SE as well as a Pro Max. Numbers and names are two columns of
+     equal flex rows, so they stay aligned at any height. */
+  body.qmode .wrap{height:100vh;height:100dvh;display:flex;flex-direction:column;
+    padding:max(10px,env(safe-area-inset-top)) 14px max(10px,env(safe-area-inset-bottom))}
+  body.qmode header{margin-bottom:8px}
+  body.qmode .logo{font-size:16px}
+  body.qmode main{flex:1;min-height:0;display:flex;flex-direction:column}
+  .qview{flex:1;min-height:0;display:flex;flex-direction:column}
+  .qview .progress{margin-bottom:8px;flex:none}
+  .qview .qnum{font-size:12px}
+  .qview h1{font-size:clamp(19px,5.6vw,25px);margin:2px 0 8px}
+  .qview .sub{margin:-4px 0 8px}
+  .qview .rank{flex:1;min-height:0;margin-bottom:4px}
+  .qview .nums,.qview .list{height:100%;gap:5px}
+  .qview .nums li,.qview .list li{height:auto;flex:1 1 0;min-height:30px;max-height:64px}
+  .qview .list li .av{width:28px;height:28px}
+  .qview .ends{margin:0 0 8px 38px;flex:none}
+  .qview .row .btn{padding:12px 14px}
+  .qview .row{flex:none}
   @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-12px) rotate(-2deg)}40%{transform:translateX(10px) rotate(2deg)}60%{transform:translateX(-6px)}80%{transform:translateX(4px)}}
   @keyframes fade{from{opacity:0}}
 </style>
@@ -196,6 +217,7 @@ function renderNav(){
   });
 }
 function render(){
+  document.body.classList.toggle("qmode", view === "q");
   renderNav();
   const fns = { loading: vLoading, nocode: vNoCode, intro: vIntro, q: vQuestion, done: vDone, results: vResults, admin: vAdmin, adminLogin: vAdminLogin };
   app.replaceChildren(...[].concat(errorMsg ? el("div", { class: "err" }, errorMsg) : [], fns[view]()));
@@ -350,14 +372,13 @@ function vQuestion(){
     } else qi = Math.max(0, Math.min(quiz.questions.length - 1, qi + dir));
     render(); window.scrollTo({ top: 0, behavior: "smooth" });
   };
-  return el("div", {},
+  return el("div", { class: "qview" },
     el("div", { class: "progress" }, el("div", { style: `width:${(qi / quiz.questions.length) * 100}%` })),
     el("div", { class: "qnum" }, `Vraag ${qi + 1} van ${quiz.questions.length}`),
     el("h1", {}, q.text),
     q.sub ? el("p", { class: "sub" }, q.sub) : null,
-    el("p", { class: "hint" }, "Sleep de namen (of gebruik ▲▼). Bovenaan = meest."),
     el("div", { class: "rank" }, nums, list),
-    el("div", { class: "ends" }, el("span", {}, "↑ meest"), el("span", {}, "minst ↓")),
+    el("div", { class: "ends" }, el("span", {}, "↑ meest · sleep of gebruik ▲▼"), el("span", {}, "minst ↓")),
     el("div", { class: "row" },
       el("button", { class: "btn ghost", disabled: qi === 0 || busy, onclick: () => next(-1) }, "← Vorige"),
       el("button", { class: "btn", disabled: busy, onclick: () => next(1) }, last ? "Insturen 🎉" : "Volgende →")));
