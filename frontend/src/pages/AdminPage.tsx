@@ -146,6 +146,17 @@ export default function AdminPage() {
           {NAV.slice(4).map(item => (
             <NavItem key={item.id} item={item} active={section === item.id} onClick={() => handleNav(item.id)} />
           ))}
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '.2em', color: 'var(--color-text-muted)', padding: '16px 16px 8px' }}>Extra</div>
+          {/* A plain link, not a route: /jaarquiz is a standalone static page
+              (frontend/public/jaarquiz), so it needs a full page load. */}
+          <a href="/jaarquiz#beheer" style={{
+            display: 'flex', alignItems: 'center', gap: 10, padding: '9px 16px', width: '100%',
+            fontFamily: 'var(--font-body)', fontSize: 13, textDecoration: 'none',
+            borderLeft: '3px solid transparent', color: 'var(--color-text-soft)',
+          }}>
+            <span style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}><Glyph name="trophy" size={15} /></span>
+            Jaarquiz
+          </a>
         </aside>
 
         <main data-admin-main style={adminMainStyle()}>
