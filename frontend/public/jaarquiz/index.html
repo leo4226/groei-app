@@ -118,6 +118,43 @@
   .qview .ends{margin:0 0 8px 38px;flex:none}
   .qview .row .btn{padding:12px 14px}
   .qview .row{flex:none}
+  .ends .top{color:var(--accent);font-weight:700}
+  .ends .bottom{color:var(--accent2);font-weight:700}
+  .qnum .drag{float:right;color:var(--muted);text-transform:none;letter-spacing:0;font-weight:500}
+  #confetti{position:fixed;inset:0;pointer-events:none;z-index:70}
+
+  /* Presentation mode (#presenteer): Leon's laptop or a TV on quiz night. */
+  body.present{background:radial-gradient(1200px 700px at 50% -10%,#3a2a6a 0%,var(--bg) 60%);overflow:hidden}
+  body.present .wrap{max-width:none;height:100vh;height:100dvh;padding:2.5vh 4vw;display:flex;flex-direction:column}
+  body.present header{display:none}
+  body.present main{flex:1;min-height:0;display:flex;flex-direction:column}
+  .show{flex:1;min-height:0;display:flex;flex-direction:column;user-select:none;cursor:pointer}
+  .show .kicker{color:var(--accent);font-weight:800;letter-spacing:.12em;text-transform:uppercase;font-size:clamp(14px,1.6vw,22px)}
+  .show h1{font-size:clamp(28px,4.2vw,64px);margin:.6vh 0 1.6vh;line-height:1.08}
+  .show .labels{display:flex;justify-content:space-between;font-size:clamp(14px,1.5vw,22px);margin-bottom:1vh}
+  .show .labels .top{color:var(--accent);font-weight:700}
+  .show .labels .bottom{color:var(--accent2);font-weight:700}
+  .show ol{list-style:none;margin:0;padding:0;flex:1;min-height:0;display:flex;flex-direction:column;gap:.8vh}
+  .show ol li{flex:1 1 0;min-height:0;display:flex;align-items:center;gap:1.4vw;background:var(--panel);border:1px solid var(--line);border-radius:1.4vh;padding:0 1.6vw;font-size:clamp(16px,3.1vh,42px);font-weight:700;transition:transform .35s,background .35s}
+  .show ol li .p{width:2.4em;color:var(--muted);font-weight:800}
+  .show ol li .av{width:clamp(28px,4.6vh,64px);height:clamp(28px,4.6vh,64px);font-size:clamp(12px,2vh,26px)}
+  .show ol li .a{margin-left:auto;color:var(--muted);font-weight:500;font-size:.8em}
+  .show ol li.hidden{color:var(--muted);background:transparent;border-style:dashed}
+  .show ol li.new{animation:pop .45s}
+  .show ol li.win{background:linear-gradient(90deg,#b8862a,var(--accent));color:#1b1630;border-color:var(--accent);transform:scale(1.02)}
+  .show ol li.win .p,.show ol li.win .a{color:#1b1630}
+  .show ol li.drum{animation:drum .12s infinite;color:var(--accent)}
+  .show .center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:2vh}
+  .show .center h1{font-size:clamp(36px,6vw,96px)}
+  .show .center p{font-size:clamp(16px,2vw,28px)}
+  .show .award{display:flex;align-items:center;gap:2vw;font-size:clamp(18px,2.6vw,38px);font-weight:700;background:var(--panel);border:1px solid var(--line);border-radius:2vh;padding:1.6vh 2vw;width:min(90vw,1100px)}
+  .show .award .what{color:var(--muted);font-weight:500;font-size:.7em}
+  .show .award .av{width:clamp(36px,6vh,80px);height:clamp(36px,6vh,80px)}
+  .show .award.hidden{opacity:.25}
+  .show .bar{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:clamp(12px,1.3vw,18px);margin-top:1.2vh}
+  .show .bar button{background:transparent;border:1px solid var(--line);color:var(--text);border-radius:999px;padding:.6vh 1.4vw;font:inherit;cursor:pointer}
+  @keyframes pop{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.05)}100%{transform:scale(1);opacity:1}}
+  @keyframes drum{0%,100%{transform:translateX(0)}50%{transform:translateX(6px)}}
   @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-12px) rotate(-2deg)}40%{transform:translateX(10px) rotate(2deg)}60%{transform:translateX(-6px)}80%{transform:translateX(4px)}}
   @keyframes fade{from{opacity:0}}
 </style>
@@ -125,12 +162,13 @@
 <body>
 <div class="wrap">
   <header>
-    <div class="logo" id="logo">Jaar<span>.</span>quiz</div>
+    <div class="logo" id="logo">Jaar<span>.</span>quiz ✨🤖</div>
     <nav id="nav"></nav>
   </header>
   <main id="app"><div class="card"><p>Laden…</p></div></main>
 </div>
 <div class="toast" id="toast"></div>
+<canvas id="confetti" hidden></canvas>
 
 <script>
 "use strict";
@@ -178,9 +216,62 @@ async function api(method, path, body, headers){
   return data;
 }
 
+/* ---------- confetti: canvas, no library ---------- */
+const SLOP = ["✨", "🚀", "💯", "🔥", "🤖", "🧠", "🙌", "🫶", "🌈", "🎉", "⚡", "💅", "🗿", "🦄", "🍾"];
+function confetti(ms = 3800){
+  const c = document.getElementById("confetti");
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  c.hidden = false; c.width = innerWidth; c.height = innerHeight;
+  const ctx = c.getContext("2d");
+  const colors = ["#ffcc4d", "#ff6f91", "#5ee6a8", "#7aa2ff", "#c792ea"];
+  const n = reduce ? 40 : 170;
+  const parts = Array.from({ length: n }, () => ({
+    x: Math.random() * c.width, y: -20 - Math.random() * c.height * .5,
+    vx: (Math.random() - .5) * 4, vy: 2 + Math.random() * 4, r: Math.random() * Math.PI, vr: (Math.random() - .5) * .3,
+    s: 7 + Math.random() * 8, col: colors[Math.floor(Math.random() * colors.length)],
+    emoji: Math.random() < .35 ? SLOP[Math.floor(Math.random() * SLOP.length)] : null,
+  }));
+  const t0 = performance.now();
+  (function frame(t){
+    ctx.clearRect(0, 0, c.width, c.height);
+    for (const p of parts){
+      p.x += p.vx; p.y += p.vy; p.vy += .05; p.r += p.vr;
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r);
+      if (p.emoji){ ctx.font = (p.s * 2.2) + "px system-ui"; ctx.fillText(p.emoji, 0, 0); }
+      else { ctx.fillStyle = p.col; ctx.fillRect(-p.s / 2, -p.s / 4, p.s, p.s / 2); }
+      ctx.restore();
+    }
+    if (t - t0 < ms) requestAnimationFrame(frame); else { ctx.clearRect(0, 0, c.width, c.height); c.hidden = true; }
+  })(t0);
+}
+/* drumroll + crash, synthesized (no audio files to load) */
+let audio = null;
+function drumroll(seconds = 1.6){
+  try{
+    audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = audio, now = ctx.currentTime;
+    const noise = ctx.createBuffer(1, ctx.sampleRate * .08, ctx.sampleRate);
+    const d = noise.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+    const hit = (at, vol, len = .08) => {
+      const src = ctx.createBufferSource(); src.buffer = noise;
+      const f = ctx.createBiquadFilter(); f.type = "bandpass"; f.frequency.value = 900;
+      const g = ctx.createGain(); g.gain.setValueAtTime(vol, at); g.gain.exponentialRampToValueAtTime(.001, at + len);
+      src.connect(f).connect(g).connect(ctx.destination); src.start(at); src.stop(at + len);
+    };
+    for (let t = 0; t < seconds; t += .045) hit(now + t, .15 + .35 * (t / seconds));
+    const crash = ctx.createBuffer(1, ctx.sampleRate * 1.2, ctx.sampleRate);
+    const cd = crash.getChannelData(0); for (let i = 0; i < cd.length; i++) cd[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / cd.length, 2);
+    const src = ctx.createBufferSource(); src.buffer = crash;
+    const hp = ctx.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 3000;
+    const g = ctx.createGain(); g.gain.value = .5;
+    src.connect(hp).connect(g).connect(ctx.destination); src.start(now + seconds);
+  }catch(e){}
+}
+
 /* ---------- state ---------- */
 const hash = decodeURIComponent(location.hash.replace(/^#/, ""));
-const ADMIN = hash === "beheer";
+const PRESENT = hash === "presenteer";
+const ADMIN = hash === "beheer" || PRESENT;
 const CODE = ADMIN ? "" : hash;
 const KEY = "jaarquiz:" + CODE;
 
@@ -218,8 +309,9 @@ function renderNav(){
 }
 function render(){
   document.body.classList.toggle("qmode", view === "q");
+  document.body.classList.toggle("present", view === "present");
   renderNav();
-  const fns = { loading: vLoading, nocode: vNoCode, intro: vIntro, q: vQuestion, done: vDone, results: vResults, admin: vAdmin, adminLogin: vAdminLogin };
+  const fns = { loading: vLoading, nocode: vNoCode, intro: vIntro, q: vQuestion, done: vDone, results: vResults, admin: vAdmin, adminLogin: vAdminLogin, present: vPresent };
   app.replaceChildren(...[].concat(errorMsg ? el("div", { class: "err" }, errorMsg) : [], fns[view]()));
 }
 async function go(v){
@@ -245,10 +337,10 @@ function vIntro(){
   return el("div", {},
     el("h1", {}, quiz.title || "Rank je jaargenoten"),
     el("p", {}, `${quiz.questions.length} vragen. Bij elke vraag sleep je alle namen op volgorde: bovenaan = meest, onderaan = minst. Jezelf ranken hoort er ook bij.`),
-    el("div", { class: "card" }, el("h2", {}, "Wie ben jij?"),
+    el("div", { class: "card" }, el("h2", {}, "Wie ben jij? 🤔👇"),
       el("p", { style: "font-size:13px;margin-top:-4px" }, "Elke naam kan maar één keer gekozen worden."),
       grid,
-      el("button", { class: "btn", disabled: !picked || busy, onclick: join }, "Start")));
+      el("button", { class: "btn", disabled: !picked || busy, onclick: join }, "Start 🚀✨")));
 }
 async function join(){
   busy = true; errorMsg = ""; render();
@@ -269,7 +361,7 @@ function showLiar(){
   const m = el("div", { class: "modal" }, el("div", { class: "box" },
     el("div", { class: "big" }, "🤥"),
     el("h2", {}, quiz.liar.message),
-    el("button", { class: "btn", onclick: () => m.remove() }, "Sorry " + quiz.liar.name)));
+    el("button", { class: "btn", onclick: () => m.remove() }, "Sorry " + quiz.liar.name + " 🙏😭")));
   document.body.append(m);
 }
 function markLiar(){ liarDone = true; store("jaarquiz:liar", true); }
@@ -367,27 +459,27 @@ function vQuestion(){
     }
     busy = false;
     if (dir > 0 && last){
-      if (mine.done) view = "done";
+      if (mine.done){ view = "done"; setTimeout(() => confetti(), 50); }
       else { qi = firstOpen(); errorMsg = "Je hebt nog niet alle vragen ingevuld."; }
     } else qi = Math.max(0, Math.min(quiz.questions.length - 1, qi + dir));
     render(); window.scrollTo({ top: 0, behavior: "smooth" });
   };
   return el("div", { class: "qview" },
     el("div", { class: "progress" }, el("div", { style: `width:${(qi / quiz.questions.length) * 100}%` })),
-    el("div", { class: "qnum" }, `Vraag ${qi + 1} van ${quiz.questions.length}`),
+    el("div", { class: "qnum" }, `Vraag ${qi + 1} van ${quiz.questions.length} ✨`, el("span", { class: "drag" }, "sleep 👆 of ▲▼")),
     el("h1", {}, q.text),
     q.sub ? el("p", { class: "sub" }, q.sub) : null,
     el("div", { class: "rank" }, nums, list),
-    el("div", { class: "ends" }, el("span", {}, "↑ meest · sleep of gebruik ▲▼"), el("span", {}, "minst ↓")),
+    el("div", { class: "ends" }, el("span", { class: "top" }, "⬆️ " + (q.top || "meest")), el("span", { class: "bottom" }, (q.bottom || "minst") + " ⬇️")),
     el("div", { class: "row" },
-      el("button", { class: "btn ghost", disabled: qi === 0 || busy, onclick: () => next(-1) }, "← Vorige"),
-      el("button", { class: "btn", disabled: busy, onclick: () => next(1) }, last ? "Insturen 🎉" : "Volgende →")));
+      el("button", { class: "btn ghost", disabled: qi === 0 || busy, onclick: () => next(-1) }, "⬅️ Vorige"),
+      el("button", { class: "btn", disabled: busy, onclick: () => next(1) }, last ? "Insturen 🚀🎉💯" : "Volgende ➡️✨")));
 }
 
 function vDone(){
   return el("div", {},
-    el("div", { class: "big" }, "🍻"),
-    el("h1", { style: "text-align:center" }, "Ingestuurd, " + mine.voter + "!"),
+    el("div", { class: "big" }, "🍻🎉🙌"),
+    el("h1", { style: "text-align:center" }, "Ingestuurd, " + mine.voter + "! 🫡✨"),
     el("p", { style: "text-align:center" }, quiz.revealed ? "De uitslag is bekend." : "De uitslag blijft geheim tot de quizavond. Tot die tijd kun je je antwoorden nog aanpassen."),
     el("div", { class: "row" },
       quiz.revealed ? null : el("button", { class: "btn ghost", onclick: () => { qi = 0; view = "q"; render(); } }, "Antwoorden aanpassen"),
@@ -492,6 +584,7 @@ function vAdmin(){
       admin.responses.length ? t : el("p", {}, "Nog niemand."),
       el("p", { style: "font-size:13px;margin:10px 0 0" }, "Vrijgeven wist die persoon zijn antwoorden, zodat de naam opnieuw gekozen kan worden.")));
 
+    out.push(el("button", { class: "btn", style: "margin-bottom:14px", onclick: () => { location.hash = "presenteer"; } }, "🎬 Presenteer de uitslag 🥁✨"));
     out.push(el("div", { class: "note" }, admin.revealed ? "Live uitslag (ook zichtbaar voor deelnemers):" : "Live uitslag. Alleen jij ziet dit."));
     out.push(...resultsView(admin.results, admin.config.questions));
   }
@@ -501,9 +594,114 @@ function vAdmin(){
   return el("div", {}, out);
 }
 
+/* ---------- presentation (#presenteer) ---------- */
+/* One step per tap: each question reveals its places from last to first,
+   with a drumroll before #1; then the awards one by one. Admin data, so it
+   works before the results are revealed to everyone. */
+let slides = [], si = 0, drumming = false;
+function buildSlides(){
+  const R = admin.results, Q = admin.config.questions;
+  slides = [{ type: "intro" }];
+  R.questions.forEach(res => {
+    const q = Q.find(x => x.id === res.id); if (!q || !res.rows.length) return;
+    for (let k = 0; k <= res.rows.length; k++) slides.push({ type: "q", res, q, shown: k });
+  });
+  const own = R.questions.filter(r => !(Q.find(q => q.id === r.id) || {}).options);
+  const count = (pick) => { const c = {}; own.forEach(r => { const row = pick(r.rows); if (row) c[row.name] = (c[row.name] || 0) + 1; }); return Object.entries(c).sort((a, b) => b[1] - a[1])[0]; };
+  const first = count(rows => rows[0]), lastc = count(rows => rows[rows.length - 1]);
+  let split = null;
+  R.questions.forEach(r => r.rows.forEach(row => { const d = row.max - row.min; if (!split || d > split.d) split = { d, row, q: Q.find(q => q.id === r.id) }; }));
+  const sk = R.self_knowledge;
+  const awards = [];
+  if (first) awards.push({ e: "🏆👑", t: "Vaakst op #1", name: first[0], what: `${first[1]}× bovenaan` });
+  if (lastc) awards.push({ e: "🧊🫠", t: "Vaakst onderaan", name: lastc[0], what: `${lastc[1]}× op de laatste plek` });
+  if (split) awards.push({ e: "🔥🤯", t: "Meeste ruzie", name: split.row.name, what: `van #${split.row.min} tot #${split.row.max} bij "${split.q ? split.q.text : ""}"` });
+  if (sk.length) awards.push({ e: "🪞🧘", t: "Kent zichzelf het best", name: sk[0].name, what: `${sk[0].off_by.toFixed(1)} plekken ernaast` });
+  if (sk.length > 1) awards.push({ e: "🤡🌈", t: "Leeft in een droomwereld", name: sk[sk.length - 1].name, what: `${sk[sk.length - 1].off_by.toFixed(1)} plekken ernaast` });
+  for (let k = 0; k <= awards.length; k++) slides.push({ type: "awards", awards, shown: k });
+  slides.push({ type: "end" });
+}
+function step(dir){
+  if (drumming) return;
+  const nextI = Math.max(0, Math.min(slides.length - 1, si + dir));
+  if (nextI === si) return;
+  const s2 = slides[nextI];
+  // the step that reveals #1: drumroll first
+  if (dir > 0 && s2.type === "q" && s2.shown === s2.res.rows.length){
+    drumming = true; si = nextI; render(); drumroll(1.6);
+    setTimeout(() => { drumming = false; render(); confetti(4200); }, 1600);
+    return;
+  }
+  si = nextI; render();
+  if (dir > 0 && s2.type === "end") confetti(6000);
+}
+function vPresent(){
+  const sl = slides[si];
+  const wrap = el("div", { class: "show", onclick: (e) => { if (!e.target.closest("button")) step(1); } });
+  const bar = el("div", { class: "bar" },
+    el("button", { onclick: (e) => { e.stopPropagation(); step(-1); } }, "⬅️ terug"),
+    el("span", {}, `${si + 1} / ${slides.length} · spatie of → = verder · N = volgende vraag ✨`),
+    el("button", { onclick: (e) => { e.stopPropagation(); location.hash = "beheer"; } }, "✖️ stop"));
+  if (sl.type === "intro"){
+    wrap.append(el("div", { class: "center" },
+      el("div", { class: "big" }, "🎬🥁🍿"),
+      el("h1", {}, admin.config.title || "Jaarquiz ✨🤖"),
+      el("p", {}, `${admin.results.participants} jaargenoten hebben gestemd 🗳️💯 · ${admin.results.questions.length} vragen 🧠`),
+      el("p", {}, "Tik of druk op spatie om te beginnen 🚀")));
+  } else if (sl.type === "q"){
+    const n = sl.res.rows.length, idx = admin.config.questions.indexOf(sl.q);
+    const revealFrom = n - sl.shown; // rows with index >= revealFrom are visible
+    const ol = el("ol", {});
+    sl.res.rows.forEach((r, i) => {
+      const visible = i >= revealFrom;
+      const isWin = i === 0 && visible;
+      const isNew = visible && i === revealFrom;
+      if (i === 0 && drumming){ ol.append(el("li", { class: "hidden drum" }, el("span", { class: "p" }, "#1"), "🥁🥁🥁 …")); return; }
+      ol.append(visible
+        ? el("li", { class: (isWin ? "win " : "") + (isNew ? "new" : "") }, el("span", { class: "p" }, `#${i + 1}`), av(r.name), r.name + (isWin ? " 👑🔥" : ""), el("span", { class: "a" }, `gem. ${r.avg.toFixed(1)}`))
+        : el("li", { class: "hidden" }, el("span", { class: "p" }, `#${i + 1}`), "❓"));
+    });
+    wrap.append(
+      el("div", { class: "kicker" }, `Vraag ${idx + 1} van ${admin.config.questions.length} 🎯`),
+      el("h1", {}, sl.q.text),
+      el("div", { class: "labels" }, el("span", { class: "top" }, "⬆️ " + (sl.q.top || "meest")), el("span", { class: "bottom" }, (sl.q.bottom || "minst") + " ⬇️")),
+      ol);
+  } else if (sl.type === "awards"){
+    const list = el("div", { class: "center", style: "gap:1.6vh" }, el("h1", {}, "🏆 De prijzen 🏆✨"));
+    sl.awards.forEach((a, i) => list.append(i < sl.shown
+      ? el("div", { class: "award" + (i === sl.shown - 1 ? " new" : "") }, el("span", {}, a.e), el("div", {}, a.t, el("div", { class: "what" }, a.what)), el("span", { style: "margin-left:auto;display:flex;align-items:center;gap:1vw" }, av(a.name), a.name))
+      : el("div", { class: "award hidden" }, el("span", {}, "❓"), "…")));
+    wrap.append(list);
+  } else {
+    wrap.append(el("div", { class: "center" },
+      el("div", { class: "big" }, "🍻🫶🎉"),
+      el("h1", {}, "Proost, jaargenoten! ✨"),
+      el("p", {}, "Tot de volgende jaarquiz 🚀🤖💯")));
+  }
+  wrap.append(bar);
+  return wrap;
+}
+window.addEventListener("keydown", (e) => {
+  if (view !== "present") return;
+  if (["ArrowRight", " ", "Enter", "PageDown"].includes(e.key)){ e.preventDefault(); step(1); }
+  if (["ArrowLeft", "PageUp", "Backspace"].includes(e.key)){ e.preventDefault(); step(-1); }
+  if (e.key === "Escape") location.hash = "beheer";
+  if (e.key === "n" || e.key === "N"){
+    // jump to the start of the next question (or the awards)
+    const cur = slides[si];
+    let j = si + 1;
+    while (j < slides.length - 1 && !(slides[j].type !== "q" || (slides[j].shown === 0 && slides[j].res !== (cur && cur.res)))) j++;
+    si = j; render();
+  }
+});
+
 /* ---------- boot ---------- */
 (async () => {
-  if (ADMIN){ await loadAdmin(); render(); return; }
+  if (ADMIN){
+    await loadAdmin();
+    if (PRESENT && view === "admin" && admin?.exists){ buildSlides(); view = "present"; }
+    render(); return;
+  }
   if (!CODE){ view = "nocode"; render(); return; }
   try{ quiz = await api("GET", `/${encodeURIComponent(CODE)}`); }
   catch(e){ view = "nocode"; errorMsg = e.code === "quiz_not_found" ? "" : e.message; render(); return; }

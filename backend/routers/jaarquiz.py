@@ -86,6 +86,10 @@ class Question(BaseModel):
     id: str = Field(min_length=1, max_length=40, pattern=r"^[A-Za-z0-9_-]+$")
     text: str = Field(min_length=1, max_length=200)
     sub: Optional[str] = Field(default=None, max_length=200)
+    # Labels for the two ends of the list ("raarst" / "normaalst"); the page
+    # falls back to "meest" / "minst".
+    top: Optional[str] = Field(default=None, max_length=60)
+    bottom: Optional[str] = Field(default=None, max_length=60)
     # A question can rank its own list (e.g. "rank these men") instead of the people.
     options: Optional[list[str]] = None
 
