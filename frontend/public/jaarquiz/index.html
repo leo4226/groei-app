@@ -489,7 +489,7 @@ function vQuestion(){
     busy = false;
     const half = Math.ceil(quiz.questions.length / 2) - 1;
     if (dir > 0 && qi === half && once("analyse"))
-      await fakeLoading("AI analyseert je antwoorden… 🤖✨", 2600, "Resultaat: 87% match met een knurft 🧠✨");
+      await fakeLoading("AI analyseert je antwoorden… 🤖✨", 2600, "Resultaat: 87% match met Quint 🧠✨");
     if (dir > 0 && last && mine.done) await fakeLoading("Statistieken vervalsen net als vorige keer… 📊🤫", 2200);
     if (dir > 0 && last){
       if (mine.done){ view = "done"; setTimeout(() => confetti(), 50); }
