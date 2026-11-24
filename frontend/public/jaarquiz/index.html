@@ -140,7 +140,19 @@
   .pokemon-panel{position:relative;width:min(100%,calc(68dvh * 16 / 9));aspect-ratio:16/9;overflow:hidden}
   .pokemon-panel img{position:absolute;inset:0 auto auto 0;width:100%;height:200%;max-width:none}
   .pokemon-panel.answer img{top:-100%}
-  .intro-player{width:min(420px,92vw,48dvh);aspect-ratio:16/9;border:0}
+  .music-dock{position:fixed;right:12px;top:12px;z-index:50;width:200px;height:200px;background:#181322;border:1px solid var(--line)}
+  .music-dock[hidden]{display:none}
+  .music-dock iframe{width:100%;height:100%;border:0}
+  body.music-playing.present .wrap{padding-right:232px}
+  @media(max-width:700px){
+    body.music-playing.present{overflow:auto}
+    body.music-playing.present .wrap{padding:224px 4vw 2.5vh;height:auto;min-height:100dvh}
+    body.music-playing.present .music-dock{position:absolute}
+  }
+  body.present .show .bar{flex-wrap:wrap;gap:8px;flex-shrink:0}
+  .waiting-room{width:min(64vw,38dvh,340px);aspect-ratio:1;display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(5,1fr);align-items:center;justify-items:center;border:2px solid var(--accent);border-radius:12px;background:var(--panel);padding:8px}
+  .waiting-dot{width:55%;aspect-ratio:1;background:hsl(var(--hue) 85% 65%);border-radius:3px}
+  .waiting-dot.mine{outline:2px solid white;outline-offset:3px}
   .show .bonus-winner{color:var(--accent)}
   .bonus-preview{width:min(92vw,1000px);max-height:92dvh;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:18px}
   .bonus-preview::backdrop{background:#000b}
@@ -305,6 +317,20 @@ const LIVE = hash.startsWith("live/");
 const CODE = ADMIN ? "" : LIVE ? hash.slice(5) : hash;
 const inviteLink = code => location.origin + "/jaarquiz#" + encodeURIComponent(code);
 const KEY = "jaarquiz:" + CODE;
+const visitorId = Array.from(crypto.getRandomValues(new Uint8Array(16)), x => x.toString(16).padStart(2,"0")).join("");
+let visitors = [], nextHeartbeat = 0, hostMusic = false, listenerMusic = false, publicFrame = null;
+const musicDock = el("div", { class: "music-dock", hidden: true });
+document.body.append(musicDock);
+function syncMusic(){
+  const playing = ADMIN ? view === "present" && hostMusic : listenerMusic && !!liveSlide?.music;
+  if (playing && !musicDock.firstChild){
+    musicDock.append(el("iframe", { title: "Paloma Blanca – George Baker Selection",
+      src: "https://www.youtube-nocookie.com/embed/txpzAuXdpi0?autoplay=1&loop=1&playlist=txpzAuXdpi0",
+      allow: "autoplay; encrypted-media", referrerpolicy: "strict-origin-when-cross-origin" }));
+  } else if (!playing && musicDock.firstChild) musicDock.replaceChildren();
+  musicDock.hidden = !playing;
+  document.body.classList.toggle("music-playing", playing);
+}
 
 let quiz = null;        // {title, people, questions, liar, revealed, taken}
 let session = null;     // {token, voter}
@@ -339,6 +365,7 @@ function renderNav(){
   });
 }
 function render(){
+  syncMusic();
   const watching = !ADMIN && (LIVE || liveSlide !== null);
   document.body.classList.toggle("qmode", !watching && view === "q");
   document.body.classList.toggle("present", watching || view === "present");
@@ -715,6 +742,15 @@ function pokemonSound(play = false){
   if (pokemonCue.currentTime) pokemonCue.currentTime = 0;
   if (play) pokemonCue.play().catch(() => {});
 }
+function sayBonusName(name){
+  if (!name || !("speechSynthesis" in window)) return;
+  const line = new SpeechSynthesisUtterance("It’s " + name + "!");
+  line.lang = "en-US";
+  line.pitch = 1.25;
+  line.rate = 1.04;
+  speechSynthesis.cancel();
+  speechSynthesis.speak(line);
+}
 function previewBonus(bonus){
   const dialog = el("dialog", { class: "bonus-preview" });
   const content = el("div", {}, renderFrame({ type: "bonus", bonus }, false));
@@ -724,6 +760,7 @@ function previewBonus(bonus){
       const answer = silhouetteShown;
       content.replaceChildren(renderFrame({ type: answer ? "bonusWinner" : "bonusSilhouette", bonus }, false));
       pokemonSound(!answer);
+      if (answer) sayBonusName(bonus.name);
       silhouetteShown = true;
       reveal.textContent = "Onthul";
       reveal.disabled = answer;
@@ -864,9 +901,11 @@ function currentFrame(){
 function publish(slide){
   // Only ordinary presentation frames may leave the presenter browser.
   if (slide && !["intro", "q", "awards", "end"].includes(slide.type)) return Promise.resolve(true);
+  publicFrame = slide;
+  const payload = slide && { ...slide, music: hostMusic };
   publishQueue = publishQueue.then(async () => {
     try{
-      await api("PUT", "/admin/presentation", { join_code: admin.join_code, slide }, adminHeaders());
+      await api("PUT", "/admin/presentation", { join_code: admin.join_code, slide: payload }, adminHeaders());
       liveStatus = "";
       return true;
     }catch(e){
@@ -887,14 +926,26 @@ async function stopPresentation(){
   if (drumming || view !== "present") return;
   view = "stopping";
   pokemonSound();
-  document.querySelector(".intro-player")?.remove();
+  syncMusic();
   if (await publish(null)) location.hash = "beheer";
   else { view = "present"; render(); }
 }
 async function pollLive(){
   try{
     const { slide } = await api("GET", `/${encodeURIComponent(CODE)}/presentation`);
-    if (liveStatus || JSON.stringify(slide) !== JSON.stringify(liveSlide)){
+    let roomChanged = false;
+    if (slide?.type === "intro" && Date.now() >= nextHeartbeat){
+      nextHeartbeat = Date.now() + 5500;
+      try{
+        const room = await api("POST", `/${encodeURIComponent(CODE)}/waiting-room`, { visitor: visitorId });
+        roomChanged = JSON.stringify(visitors) !== JSON.stringify(room.visitors);
+        visitors = room.visitors;
+      }catch(e){ /* Keep the last roster until the next heartbeat. */ }
+    } else if (slide?.type !== "intro"){
+      visitors = [];
+      nextHeartbeat = 0;
+    }
+    if (roomChanged || liveStatus || JSON.stringify(slide) !== JSON.stringify(liveSlide)){
       liveStatus = "";
       liveSlide = slide;
       render();
@@ -937,6 +988,7 @@ function step(dir){
     return;
   }
   si = nextI; showFrame();
+  if (dir > 0 && s2.type === "bonusWinner" && s2.bonus.pokemon) sayBonusName(s2.bonus.name);
   if (dir > 0 && s2.type === "q" && s2.shown) confetti(2300, PODIUM_EMOJI[s2.res.rows.length - s2.shown]);
   if (dir > 0 && s2.type === "end") confetti(6000);
 }
@@ -944,7 +996,13 @@ function vPresent(){
   const wrap = renderFrame(currentFrame(), true);
   wrap.append(el("div", { class: "bar" },
     el("button", { onclick: () => step(-1) }, "⬅️ terug"),
-    el("span", {}, `${si + 1} / ${slides.length} · spatie of → = verder · N = volgende vraag`),
+    el("span", {}, `${si + 1} / ${slides.length}`),
+    el("button", { onclick: () => step(1) }, "Verder →"),
+    el("button", { onclick: () => {
+      hostMusic = !hostMusic;
+      render();
+      publish(publicFrame);
+    } }, hostMusic ? "■ Stop muziek" : "▶ Paloma Blanca"),
     el("button", { onclick: () => copyInviteLink() }, "Kopieer uitnodigingslink"),
     el("button", { onclick: () => publish(currentFrame()) }, "Synchroniseer"),
     el("button", { onclick: stopPresentation }, "✖️ stop")));
@@ -954,6 +1012,9 @@ function vPresent(){
 function vLive(){
   if (liveSlide){
     const frame = renderFrame(liveSlide, false);
+    if (liveSlide.music) frame.append(el("div", { class: "bar" },
+      el("button", { onclick: () => { listenerMusic = !listenerMusic; render(); } },
+        listenerMusic ? "Geluid uit" : "Geluid aan")));
     if (liveStatus) frame.append(el("p", { role: "status" }, liveStatus));
     return frame;
   }
@@ -987,13 +1048,13 @@ function renderFrame(sl, host){
       el("div", { class: "big" }, "🎬🥁🍿"),
       el("h1", {}, sl.title || "Jaarquiz ✨🤖"),
       el("p", {}, `${sl.participants} jaargenoten hebben gestemd 🗳️💯 · ${sl.total} vragen 🧠`),
-      host ? el("button", { class: "btn small", onclick: (event) => {
-        event.stopPropagation();
-        event.currentTarget.replaceWith(el("iframe", { class: "intro-player", title: "Paloma Blanca – George Baker Selection",
-          src: "https://www.youtube-nocookie.com/embed/txpzAuXdpi0?autoplay=1",
-          allow: "autoplay; encrypted-media", referrerpolicy: "strict-origin-when-cross-origin" }));
-      } }, "▶ Speel Paloma Blanca") : null,
-      el("p", {}, host ? "Tik of druk op spatie om te beginnen 🚀" : "De presentator bepaalt wanneer we verdergaan.")));
+      host ? null : el("div", { class: "waiting-room", "aria-label": `${visitors.length} aanwezigen` },
+        ...visitors.map(id => el("span", {
+          class: "waiting-dot" + (id === visitorId ? " mine" : ""),
+          style: `--hue:${parseInt(id.slice(0,4),16) % 360}`, "aria-hidden": "true",
+        }))),
+      host ? null : el("p", {}, `${visitors.length} in de wachtkamer · jij hebt een witte rand`),
+      el("p", {}, host ? "De wachtkamer is open. Tik op Verder om te beginnen." : "De presentator bepaalt wanneer we verdergaan.")));
   } else if (sl.type === "q"){
     const ol = el("ol", {});
     const firstVisible = sl.rows.findIndex(Boolean);
@@ -1048,7 +1109,7 @@ window.addEventListener("keydown", (e) => {
 (async () => {
   if (ADMIN){
     await loadAdmin();
-    if (PRESENT && view === "admin" && admin?.exists){ buildSlides(); view = "present"; showFrame(); return; }
+    if (PRESENT && view === "admin" && admin?.exists){ buildSlides(); hostMusic = true; view = "present"; showFrame(); return; }
     render(); return;
   }
   if (!CODE){ view = "nocode"; render(); return; }
