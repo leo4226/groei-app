@@ -664,8 +664,18 @@ function bonusSettings(){
         saved.ages?.[i] ? " Foto opgeslagen." : ""))),
     el("div", { class: "row" },
       el("button", { class: "btn small", onclick: save }, "Bonus opslaan"),
-      el("button", { class: "btn small ghost", onclick: () => {
-        if (saved.photo || saved.pokemon) previewBonus(saved); else status.textContent = "Sla de bonus eerst op.";
+      el("button", { class: "btn small ghost", onclick: async (event) => {
+        const button = event.currentTarget;
+        button.disabled = true;
+        try{
+          const draft = { ...saved, ...fields() };
+          if (pokemon.files[0]) draft.pokemon = await bonusPhoto(pokemon.files[0]);
+          if (file.files[0] && !draft.pokemon) draft.photo = await bonusPhoto(file.files[0]);
+          if (!draft.photo && !draft.pokemon){ status.textContent = "Kies eerst een foto of quizbeeld."; return; }
+          draft.question ||= "Geheime bonusvraag";
+          previewBonus(draft);
+        }catch(e){ status.textContent = "Het beeld kon niet worden geopend."; }
+        finally{ button.disabled = false; }
       } }, "Privé testen"),
       el("button", { class: "btn small ghost", onclick: () => { localStorage.removeItem(BONUS_KEY); render(); } }, "Bonus uitschakelen")),
     status);
@@ -778,8 +788,13 @@ function vAdmin(){
 
     out.push(bonusSettings());
     out.push(el("button", { class: "btn", style: "margin-bottom:14px", onclick: () => { location.hash = "presenteer"; } }, "🎬 Presenteer de uitslag 🥁✨"));
-    out.push(el("div", { class: "note" }, admin.revealed ? "Live uitslag (ook zichtbaar voor deelnemers):" : "Live uitslag. Alleen jij ziet dit."));
-    out.push(...resultsView(admin.results, admin.config.questions));
+    const resultsPanel = el("div", {});
+    const resultDetails = el("details", { class: "card" },
+      el("summary", {}, "Toon uitslagen in Beheer"), resultsPanel);
+    resultDetails.addEventListener("toggle", () => {
+      resultsPanel.replaceChildren(...(resultDetails.open ? resultsView(admin.results, admin.config.questions) : []));
+    });
+    out.push(resultDetails);
   }
   out.push(el("div", { class: "card" }, el("h2", {}, admin?.exists ? "Configuratie" : "Nieuwe quiz"),
     el("p", {}, "Namen, foto's en vragen als JSON. Laad een bestand of plak de tekst."), file, el("div", { style: "height:8px" }), ta,
