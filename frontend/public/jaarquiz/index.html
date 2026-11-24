@@ -294,7 +294,7 @@ const PRESENT = hash === "presenteer";
 const ADMIN = hash === "beheer" || PRESENT;
 const LIVE = hash.startsWith("live/");
 const CODE = ADMIN ? "" : LIVE ? hash.slice(5) : hash;
-const liveLink = code => location.origin + "/jaarquiz#live/" + encodeURIComponent(code);
+const inviteLink = code => location.origin + "/jaarquiz#" + encodeURIComponent(code);
 const KEY = "jaarquiz:" + CODE;
 
 let quiz = null;        // {title, people, questions, liar, revealed, taken}
@@ -330,10 +330,16 @@ function renderNav(){
   });
 }
 function render(){
-  document.body.classList.toggle("qmode", view === "q");
-  document.body.classList.toggle("present", view === "present" || view === "live");
+  const watching = !ADMIN && (LIVE || liveSlide !== null);
+  document.body.classList.toggle("qmode", !watching && view === "q");
+  document.body.classList.toggle("present", watching || view === "present");
+  if (watching){
+    navEl.replaceChildren();
+    app.replaceChildren(vLive());
+    return;
+  }
   renderNav();
-  const fns = { loading: vLoading, nocode: vNoCode, intro: vIntro, q: vQuestion, done: vDone, results: vResults, admin: vAdmin, adminLogin: vAdminLogin, present: vPresent, stopping: vLoading, live: vLive };
+  const fns = { loading: vLoading, nocode: vNoCode, intro: vIntro, q: vQuestion, done: vDone, results: vResults, admin: vAdmin, adminLogin: vAdminLogin, present: vPresent, stopping: vLoading };
   app.replaceChildren(...[].concat(errorMsg ? el("div", { class: "err" }, errorMsg) : [], fns[view]()));
 }
 async function go(v){
@@ -538,8 +544,7 @@ function vDone(){
     el("p", { style: "text-align:center" }, quiz.revealed ? "De uitslag is bekend." : "De uitslag blijft geheim tot de quizavond. Tot die tijd kun je je antwoorden nog aanpassen."),
     el("div", { class: "row" },
       quiz.revealed ? null : el("button", { class: "btn ghost", onclick: () => { qi = 0; view = "q"; render(); } }, "Antwoorden aanpassen"),
-      quiz.revealed ? el("button", { class: "btn", onclick: () => go("results") }, "Bekijk uitslag") : null,
-      el("a", { class: "btn ghost", href: liveLink(CODE) }, "Volg de presentatie live")));
+      quiz.revealed ? el("button", { class: "btn", onclick: () => go("results") }, "Bekijk uitslag") : null));
 }
 
 /* ---------- results ---------- */
@@ -690,7 +695,7 @@ function vAdmin(){
   } }, admin?.exists ? "Configuratie opslaan" : "Quiz aanmaken");
 
   if (admin?.exists){
-    const link = location.origin + "/jaarquiz#" + admin.join_code;
+    const link = inviteLink(admin.join_code);
     const rev = el("input", { type: "checkbox" }); rev.checked = admin.revealed;
     rev.addEventListener("change", () => saveAdmin(admin.config, rev.checked));
     out.push(el("div", { class: "card" }, el("h2", {}, "Uitnodigingslink"),
@@ -698,8 +703,7 @@ function vAdmin(){
       el("div", { class: "row" },
         el("button", { class: "btn small", onclick: async () => { try{ await navigator.clipboard.writeText(link); toast("Link gekopieerd"); }catch(e){ toast("Kopiëren lukte niet"); } } }, "Kopieer link"),
         el("button", { class: "btn small ghost", onclick: () => saveAdmin(admin.config, admin.revealed, "new") }, "Nieuwe link (oude vervalt)")),
-      el("p", {}, el("a", { href: liveLink(admin.join_code), target: "_blank", rel: "noopener" }, "Live meekijken"), " · ",
-        el("button", { class: "btn small ghost", onclick: () => copyLiveLink() }, "Kopieer live-link")),
+      el("p", {}, "Via dezelfde link kijken deelnemers automatisch mee zodra je presenteert."),
       el("label", { class: "toggle" }, rev, "Uitslag zichtbaar voor iedereen"),
       el("p", { style: "font-size:13px;margin:0" }, "Zolang de uitslag geheim is, ziet iedereen alleen zijn eigen antwoorden. Zodra je hem vrijgeeft, kan niemand nog iets aanpassen en ziet iedereen de gemiddelden, nooit wie wat heeft ingevuld.")));
 
@@ -759,8 +763,8 @@ function buildSlides(){
   slides.push({ type: "end" });
 }
 let liveSlide = null, liveStatus = "", publishQueue = Promise.resolve();
-async function copyLiveLink(){
-  try{ await navigator.clipboard.writeText(liveLink(admin.join_code)); toast("Live-link gekopieerd"); }
+async function copyInviteLink(){
+  try{ await navigator.clipboard.writeText(inviteLink(admin.join_code)); toast("Uitnodigingslink gekopieerd"); }
   catch(e){ toast("Kopiëren lukte niet"); }
 }
 function currentFrame(){
@@ -818,11 +822,14 @@ async function pollLive(){
       render();
     }
   }catch(e){
-    const message = e.code === "quiz_not_found" ? e.message : "Verbinding verbroken. Opnieuw verbinden…";
-    if (message !== liveStatus){ liveStatus = message; liveSlide = null; render(); }
+    if (LIVE || liveSlide){
+      liveStatus = e.code === "quiz_not_found" ? e.message : "Verbinding verbroken. Opnieuw verbinden…";
+      if (e.code === "quiz_not_found") liveSlide = null;
+      render();
+    }
     if (e.code === "quiz_not_found") return;
   }
-  setTimeout(pollLive, 1500);
+  setTimeout(pollLive, LIVE || liveSlide ? 1500 : 4000);
 }
 function step(dir){
   if (drumming) return;
@@ -848,14 +855,18 @@ function vPresent(){
   wrap.append(el("div", { class: "bar" },
     el("button", { onclick: () => step(-1) }, "⬅️ terug"),
     el("span", {}, `${si + 1} / ${slides.length} · spatie of → = verder · N = volgende vraag`),
-    el("button", { onclick: () => copyLiveLink() }, "Kopieer live-link"),
+    el("button", { onclick: () => copyInviteLink() }, "Kopieer uitnodigingslink"),
     el("button", { onclick: () => publish(currentFrame()) }, "Synchroniseer"),
     el("button", { onclick: stopPresentation }, "✖️ stop")));
   wrap.append(el("p", { id: "live-status", role: "status" }, liveStatus));
   return wrap;
 }
 function vLive(){
-  if (liveSlide) return renderFrame(liveSlide, false);
+  if (liveSlide){
+    const frame = renderFrame(liveSlide, false);
+    if (liveStatus) frame.append(el("p", { role: "status" }, liveStatus));
+    return frame;
+  }
   return el("div", { class: "show watching" }, el("div", { class: "center" },
     el("h1", {}, "Jaarquiz live"),
     el("p", { role: "status" }, liveStatus || "Wachten tot de presentator begint…")));
@@ -937,7 +948,7 @@ window.addEventListener("keydown", (e) => {
   try{ quiz = await api("GET", `/${encodeURIComponent(CODE)}`); }
   catch(e){ view = "nocode"; errorMsg = e.code === "quiz_not_found" ? "" : e.message; render(); return; }
   document.title = quiz.title || "Jaarquiz";
-  if (LIVE){ view = "live"; render(); await pollLive(); return; }
+  if (LIVE){ render(); await pollLive(); return; }
   session = store(KEY);
   if (session?.token){
     try{
@@ -949,6 +960,7 @@ window.addEventListener("keydown", (e) => {
     else { view = mine.done ? "done" : "q"; qi = firstOpen(); }
   } else view = "intro";
   render();
+  await pollLive();
 })();
 window.addEventListener("hashchange", () => location.reload());
 </script>
