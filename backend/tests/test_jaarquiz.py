@@ -185,3 +185,26 @@ async def test_end_labels_reach_participants(client, admin_header):
     code = await _setup(client, admin_header)
     q = (await client.get(f"/api/jaarquiz/{code}")).json()["questions"][0]
     assert (q["top"], q["bottom"]) == ("raarst", "normaalst")
+
+
+@pytest.mark.asyncio
+async def test_live_presentation_is_invite_readable_and_admin_controlled(client, admin_header):
+    code = await _setup(client, admin_header)
+    path = f"/api/jaarquiz/{code}/presentation"
+    control = "/api/jaarquiz/admin/presentation"
+    slide = {"type": "q", "rows": [None, None, {"name": "Cas", "avg": 3.0}]}
+    frame = {"join_code": code, "slide": slide}
+
+    assert (await client.get(path)).json() == {"slide": None}
+    assert (await client.put(control, json=frame)).status_code in (401, 403)
+    assert (await client.put(control, json=frame, headers=admin_header)).status_code == 200
+    watching = await client.get(path)
+    assert watching.json() == {"slide": slide}
+    assert watching.headers["cache-control"] == "no-store"
+    assert (await client.get("/api/jaarquiz/wrong/presentation")).status_code == 404
+    assert (await client.get(f"/api/jaarquiz/{code}/results")).status_code == 403
+    assert "_presentation" not in (await client.get(f"/api/jaarquiz/{code}")).json()
+
+    frame["slide"] = None
+    assert (await client.put(control, json=frame, headers=admin_header)).status_code == 200
+    assert (await client.get(path)).json() == {"slide": None}
