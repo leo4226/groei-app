@@ -154,6 +154,10 @@ class PresentationUpdate(BaseModel):
     slide: Optional[dict] = None
 
 
+class WaitingVisitor(BaseModel):
+    visitor: str = Field(pattern=r"^[0-9a-f]{32}$")
+
+
 class JoinBody(BaseModel):
     voter: str = Field(min_length=1, max_length=40)
 
@@ -361,27 +365,31 @@ async def admin_presentation(body: PresentationUpdate, admin=Depends(require_adm
     raw = json.dumps(body.slide, ensure_ascii=False)
     if len(raw.encode("utf-8")) > 24_000:
         raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "config_too_large")
-    rows = await db.execute_fetchall(
-        "SELECT config FROM jaarquiz WHERE id = ? AND join_code = ?",
-        (QUIZ_ID, body.join_code),
-    )
-    if not rows:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "quiz_not_found")
-    previous = rows[0]["config"]
-    stored = json.loads(previous)
-    if body.slide is None:
-        stored.pop("_presentation", None)
-    else:
-        stored["_presentation"] = body.slide
-    # Compare against what we read so a concurrent config edit can't be lost.
-    updated = await db.execute_fetchall(
-        "UPDATE jaarquiz SET config = ? WHERE id = ? AND join_code = ? AND config = ? RETURNING id",
-        (json.dumps(stored, ensure_ascii=False), QUIZ_ID, body.join_code, previous),
-    )
-    if not updated:
-        raise HTTPException(status.HTTP_409_CONFLICT, "presentation_changed")
-    await db.commit()
-    return {"ok": True}
+    for _ in range(3):
+        rows = await db.execute_fetchall(
+            "SELECT config FROM jaarquiz WHERE id = ? AND join_code = ?",
+            (QUIZ_ID, body.join_code),
+        )
+        if not rows:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "quiz_not_found")
+        previous = rows[0]["config"]
+        stored = json.loads(previous)
+        if not body.slide or body.slide.get("type") != "intro":
+            stored.pop("_waiting_visitors", None)
+        if body.slide is None:
+            stored.pop("_presentation", None)
+        else:
+            stored["_presentation"] = body.slide
+        # Compare against what we read so a concurrent config edit can't be lost.
+        updated = await db.execute_fetchall(
+            "UPDATE jaarquiz SET config = ? WHERE id = ? AND join_code = ? AND config = ? RETURNING id",
+            (json.dumps(stored, ensure_ascii=False), QUIZ_ID, body.join_code, previous),
+        )
+        if updated:
+            await db.commit()
+            return {"ok": True}
+        await db.rollback()
+    raise HTTPException(status.HTTP_409_CONFLICT, "presentation_changed")
 
 
 @router.delete("/admin/responses/{voter}")
@@ -470,6 +478,40 @@ async def quiz_save(
     )
     await db.commit()
     return {"voter": me["voter"], "answers": answers, "done": done}
+
+
+@router.post("/{code}/waiting-room")
+async def waiting_room(code: str, body: WaitingVisitor, response: Response, db=Depends(db_dep)):
+    """Anonymous, expiring tab presence shared by all API workers."""
+    await _quiz_by_code(db, code)
+    response.headers["Cache-Control"] = "no-store"
+    for _ in range(3):
+        rows = await db.execute_fetchall(
+            "SELECT config FROM jaarquiz WHERE id = ? AND join_code = ?", (QUIZ_ID, code)
+        )
+        if not rows:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "quiz_not_found")
+        previous = rows[0]["config"]
+        stored = json.loads(previous)
+        if (stored.get("_presentation") or {}).get("type") != "intro":
+            return {"visitors": []}
+        now = int(datetime.now(timezone.utc).timestamp())
+        visitors = {
+            visitor: seen for visitor, seen in stored.get("_waiting_visitors", {}).items()
+            if seen > now - 25
+        }
+        if body.visitor in visitors or len(visitors) < 40:
+            visitors[body.visitor] = now
+        stored["_waiting_visitors"] = visitors
+        updated = await db.execute_fetchall(
+            "UPDATE jaarquiz SET config = ? WHERE id = ? AND join_code = ? AND config = ? RETURNING id",
+            (json.dumps(stored, ensure_ascii=False), QUIZ_ID, code, previous),
+        )
+        if updated:
+            await db.commit()
+            return {"visitors": sorted(visitors)}
+        await db.rollback()
+    raise HTTPException(status.HTTP_409_CONFLICT, "presentation_changed")
 
 
 @router.get("/{code}/presentation")
