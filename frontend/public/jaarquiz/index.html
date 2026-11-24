@@ -140,6 +140,32 @@
   .pokemon-panel{position:relative;width:min(100%,calc(68dvh * 16 / 9));aspect-ratio:16/9;overflow:hidden}
   .pokemon-panel img{position:absolute;inset:0 auto auto 0;width:100%;height:200%;max-width:none}
   .pokemon-panel.answer img{top:-100%}
+  .bonus-art{position:absolute;inset:0;overflow:hidden}
+  .pokemon-panel.entrance{background:radial-gradient(ellipse at 28% 52%,#d9faff 0%,#5bc6e5 24%,transparent 58%),linear-gradient(120deg,#5bc6e5 24%,#cf1727 62%,#eb423b)}
+  .pokemon-panel.entrance .bonus-art{animation:bonus-silhouette 1.2s both}
+  .bonus-ball{position:absolute;left:30%;top:53%;z-index:2;width:12%;aspect-ratio:1;transform:translate(-50%,-50%);animation:bonus-ball-flight 1.2s both;pointer-events:none}
+  .bonus-ball::before,.bonus-ball::after{content:"";position:absolute;left:0;right:0;height:50%;border:clamp(2px,.45vw,7px) solid #171521;background:#ed253b;box-shadow:inset 0 6px 10px #fff6}
+  .bonus-ball::before{top:0;border-radius:100% 100% 0 0 / 200% 200% 0 0;animation:bonus-ball-open 1.2s both}
+  .bonus-ball::after{bottom:0;border-radius:0 0 100% 100% / 0 0 200% 200%;background:#fff8ee}
+  .bonus-ball span{position:absolute;left:50%;top:50%;z-index:1;transform:translate(-50%,-50%);width:35%;aspect-ratio:1;border-radius:50%;background:#fff8ee;border:clamp(2px,.38vw,6px) solid #171521}
+  .bonus-flash{position:absolute;inset:0;z-index:3;background:radial-gradient(circle at 30% 53%,white 2%,#d5fcff 13%,transparent 52%);animation:bonus-flash 1.2s both;pointer-events:none}
+  @keyframes bonus-ball-flight{
+    0%{opacity:1;transform:translate(620%,130%) rotate(260deg) scale(.55)}
+    35%{transform:translate(235%,-135%) rotate(110deg) scale(.8)}
+    59%,76%{opacity:1;transform:translate(-50%,-50%) rotate(0)}
+    91%,100%{opacity:0;transform:translate(-50%,-50%) scale(1.1)}
+  }
+  @keyframes bonus-ball-open{0%,62%{transform:none}79%,100%{transform:translate(-8%,-45%) rotate(-23deg)}}
+  @keyframes bonus-flash{0%,62%,100%{opacity:0}72%{opacity:1}}
+  @keyframes bonus-silhouette{
+    0%,65%{opacity:0;clip-path:circle(0 at 30% 53%)}
+    74%{opacity:1;clip-path:circle(22% at 30% 53%)}
+    100%{opacity:1;clip-path:circle(100% at 30% 53%)}
+  }
+  @media(prefers-reduced-motion:reduce){
+    .pokemon-panel.entrance .bonus-art{animation:none}
+    .bonus-ball,.bonus-flash{display:none}
+  }
   .music-dock{position:fixed;right:12px;top:12px;z-index:50;width:200px;height:200px;background:#181322;border:1px solid var(--line)}
   .music-dock[hidden]{display:none}
   .music-dock iframe{width:100%;height:100%;border:0}
@@ -1032,8 +1058,11 @@ function renderFrame(sl, host){
     onclick: host ? (e) => { if (!e.target.closest("button") && view === "present") step(1); } : null });
   if (sl.type === "bonusSilhouette" || (sl.type === "bonusWinner" && sl.bonus.pokemon)){
     const answer = sl.type === "bonusWinner";
-    wrap.append(el("div", { class: "center" }, el("div", { class: "pokemon-panel" + (answer ? " answer" : "") },
-      el("img", { src: sl.bonus.pokemon, alt: answer ? "It’s " + sl.bonus.name + "!" : "Who’s That Pokémon?" }))));
+    wrap.append(el("div", { class: "center" }, el("div", { class: "pokemon-panel" + (answer ? " answer" : " entrance") },
+      el("div", { class: "bonus-art" },
+        el("img", { src: sl.bonus.pokemon, alt: answer ? "It’s " + sl.bonus.name + "!" : "Who’s That Pokémon?" })),
+      answer ? null : el("div", { class: "bonus-ball", "aria-hidden": "true" }, el("span", {})),
+      answer ? null : el("div", { class: "bonus-flash", "aria-hidden": "true" }))));
   } else if (sl.type === "bonusAge"){
     wrap.append(el("div", { class: "center" }, bonusPortrait(sl.photo, "Wie is dit?", sl.previous)));
   } else if (sl.type === "bonus" || sl.type === "bonusWinner"){
