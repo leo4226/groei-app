@@ -174,6 +174,7 @@ POLICY_ENTRIES = (
         PLATFORM_ADMIN,
         "Protected by the platform-admin dependency, outside household roles.",
         ("PUT", "/api/jaarquiz/admin"),
+        ("PUT", "/api/jaarquiz/admin/presentation"),
         ("DELETE", "/api/jaarquiz/admin/responses/{voter}"),
         ("POST", "/api/admin-panel/anchors/{anchor_id}/retract"),
         ("POST", "/api/admin-panel/bioclip/sync"),
