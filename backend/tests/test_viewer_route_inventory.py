@@ -202,6 +202,7 @@ POLICY_ENTRIES = (
     ("POST", "/api/internal/watchdog/heartbeat", PLATFORM_ADMIN, "The watchdog endpoint validates its own internal shared secret."),
     ("POST", "/api/integrations/care/done", GUEST_OR_PUBLIC, "An integration token with the 'care' scope authorizes it, and only while its account can still edit."),
     ("POST", "/api/jaarquiz/{code}/join", GUEST_OR_PUBLIC, "The quiz's invite code admits a participant; a name can be claimed once and touches no household data."),
+    ("POST", "/api/jaarquiz/{code}/waiting-room", GUEST_OR_PUBLIC, "The quiz invite code admits anonymous, expiring presence while the waiting room is open."),
     ("PUT", "/api/jaarquiz/{code}/me", GUEST_OR_PUBLIC, "A participant token (only its hash stored) lets someone change only their own quiz answers."),
     ("POST", "/api/notifications/snooze", GUEST_OR_PUBLIC, "A signed email capability token authorizes a limited push-snooze action."),
     ("POST", "/api/notifications/unsubscribe", GUEST_OR_PUBLIC, "A signed email capability token switches off that account's digest (confirm button or RFC 8058 one-click)."),
