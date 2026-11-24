@@ -137,6 +137,10 @@
   .show .bonus-portrait .incoming{animation:bonus-fade .75s ease-in-out}
   @keyframes bonus-fade{from{opacity:0}to{opacity:1}}
   @media(prefers-reduced-motion:reduce){.show .bonus-portrait .incoming{animation:none}}
+  .pokemon-panel{position:relative;width:min(100%,calc(68dvh * 16 / 9));aspect-ratio:16/9;overflow:hidden}
+  .pokemon-panel img{position:absolute;inset:0 auto auto 0;width:100%;height:200%;max-width:none}
+  .pokemon-panel.answer img{top:-100%}
+  .intro-player{width:min(420px,92vw,48dvh);aspect-ratio:16/9;border:0}
   .show .bonus-winner{color:var(--accent)}
   .bonus-preview{width:min(92vw,1000px);max-height:92dvh;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:18px}
   .bonus-preview::backdrop{background:#000b}
@@ -623,10 +627,11 @@ function bonusSettings(){
   const after = el("input", { type: "number", min: 1, max: admin.config.questions.length,
     value: saved.after || Math.min(7, admin.config.questions.length) });
   const file = el("input", { type: "file", accept: "image/jpeg,image/png,image/webp" });
+  const pokemon = el("input", { type: "file", accept: "image/jpeg,image/png,image/webp" });
   const ages = ["Baby", "Kleuter", "Jonge tiener", "Jongvolwassene"].map((label, i) => ({ label, i,
     input: el("input", { type: "file", accept: "image/jpeg,image/png,image/webp" }),
   }));
-  const status = el("p", { role: "status" }, saved.photo ? "Foto opgeslagen." : "Kies een foto.");
+  const status = el("p", { role: "status" }, saved.pokemon ? "Pokémon-quizbeeld opgeslagen." : saved.photo ? "Foto opgeslagen." : "Kies een foto of quizbeeld.");
   const fields = () => ({ question: question.value.trim(), name: name.value.trim(), after: Number(after.value) });
   function valid(draft){
     return draft.question && draft.name && Number.isInteger(draft.after) && draft.after >= 1 && draft.after <= admin.config.questions.length;
@@ -636,12 +641,13 @@ function bonusSettings(){
     if (!valid(draft)){ status.textContent = "Vul de vraag, naam en een geldig vraagnummer in."; return; }
     try{
       draft.photo = file.files[0] ? await bonusPhoto(file.files[0]) : saved.photo;
-      if (!draft.photo){ status.textContent = "Kies eerst een foto."; return; }
+      draft.pokemon = pokemon.files[0] ? await bonusPhoto(pokemon.files[0]) : saved.pokemon;
+      if (!draft.photo && !draft.pokemon){ status.textContent = "Kies eerst een foto of quizbeeld."; return; }
       draft.ages = await Promise.all(ages.map(({ input, i }) =>
         input.files[0] ? bonusPhoto(input.files[0]) : saved.ages?.[i] || null));
       localStorage.setItem(BONUS_KEY, JSON.stringify(draft));
       Object.assign(saved, draft);
-      file.value = "";
+      file.value = pokemon.value = "";
       ages.forEach(({ input }) => { input.value = ""; });
       status.textContent = "Opgeslagen in deze browser.";
     }catch(e){ status.textContent = "Opslaan mislukt. Probeer een kleinere jpg, png of webp."; }
@@ -652,13 +658,14 @@ function bonusSettings(){
     el("div", { class: "row" }, el("label", {}, "Na vraag ", after), el("label", {}, "Naam ", name)),
     el("p", {}, el("label", {}, "Vraag ", question)),
     el("p", {}, el("label", {}, "Eindfoto (volwassen) ", file)),
+    el("p", {}, el("label", {}, "Pokémon-quizbeeld (silhouet boven, onthulling onder) ", pokemon)),
     el("details", {}, el("summary", {}, "Leeftijdsanimatie (optioneel)"),
       ...ages.map(({ label, input, i }) => el("p", {}, el("label", {}, label + " ", input),
         saved.ages?.[i] ? " Foto opgeslagen." : ""))),
     el("div", { class: "row" },
       el("button", { class: "btn small", onclick: save }, "Bonus opslaan"),
       el("button", { class: "btn small ghost", onclick: () => {
-        if (saved.photo) previewBonus(saved); else status.textContent = "Sla de bonus eerst op.";
+        if (saved.photo || saved.pokemon) previewBonus(saved); else status.textContent = "Sla de bonus eerst op.";
       } }, "Privé testen"),
       el("button", { class: "btn small ghost", onclick: () => { localStorage.removeItem(BONUS_KEY); render(); } }, "Bonus uitschakelen")),
     status);
@@ -691,22 +698,40 @@ async function playBonus(bonus, show, active = () => true){
   }
   if (active()) show({ type: "bonusWinner", bonus });
 }
+const pokemonCue = new Audio("https://www.myinstants.com/media/sounds/whos-that-pokemon_.mp3");
+pokemonCue.preload = "none";
+function pokemonSound(play = false){
+  if (!pokemonCue.paused) pokemonCue.pause();
+  if (pokemonCue.currentTime) pokemonCue.currentTime = 0;
+  if (play) pokemonCue.play().catch(() => {});
+}
 function previewBonus(bonus){
   const dialog = el("dialog", { class: "bonus-preview" });
   const content = el("div", {}, renderFrame({ type: "bonus", bonus }, false));
+  let silhouetteShown = false;
   const reveal = el("button", { class: "btn small", onclick: () => {
+    if (bonus.pokemon){
+      const answer = silhouetteShown;
+      content.replaceChildren(renderFrame({ type: answer ? "bonusWinner" : "bonusSilhouette", bonus }, false));
+      pokemonSound(!answer);
+      silhouetteShown = true;
+      reveal.textContent = "Onthul";
+      reveal.disabled = answer;
+      return;
+    }
     reveal.disabled = true;
     playBonus(bonus, frame => {
       content.replaceChildren(renderFrame(frame, false));
       if (frame.type === "bonusWinner") confetti(4400, BONUS_EMOJI, true);
     }, () => dialog.open);
-  } }, "Onthul");
+  } }, bonus.pokemon ? "Toon silhouet" : "Onthul");
   dialog.append(content, el("div", { class: "row" }, reveal,
     el("button", { class: "btn small ghost", onclick: () => dialog.close() }, "Sluiten")));
   const canvas = document.getElementById("confetti");
   const canvasParent = canvas.parentNode;
   dialog.append(canvas);
   dialog.addEventListener("close", () => {
+    if (bonus.pokemon) pokemonSound();
     cancelAnimationFrame(confettiFrame);
     canvas.hidden = true;
     canvasParent.append(canvas);
@@ -777,7 +802,11 @@ function buildSlides(){
       const podium = { rows: res.rows.slice(0, 3) };
       for (let k = 0; k <= podium.rows.length; k++) slides.push({ type: "q", res: podium, q, shown: k });
     }
-    if (bonus?.after === i + 1 && bonus.photo) slides.push({ type: "bonus", bonus }, { type: "bonusWinner", bonus });
+    if (bonus?.after === i + 1 && (bonus.photo || bonus.pokemon)){
+      slides.push({ type: "bonus", bonus });
+      if (bonus.pokemon) slides.push({ type: "bonusSilhouette", bonus });
+      slides.push({ type: "bonusWinner", bonus });
+    }
   });
   const own = R.questions.filter(r => !(Q.find(q => q.id === r.id) || {}).options);
   const count = (pick) => { const c = {}; own.forEach(r => { const row = pick(r.rows); if (row) c[row.name] = (c[row.name] || 0) + 1; }); return Object.entries(c).sort((a, b) => b[1] - a[1])[0]; };
@@ -801,7 +830,7 @@ async function copyInviteLink(){
 }
 function currentFrame(){
   const sl = slides[si];
-  if (sl.type === "bonus" || sl.type === "bonusWinner") return bonusFrame || sl;
+  if (sl.bonus) return bonusFrame || sl;
   if (sl.type === "intro") return {
     type: "intro", title: quiz.title,
     participants: admin.results.participants, total: quiz.questions.length,
@@ -842,6 +871,8 @@ function showFrame(){
 async function stopPresentation(){
   if (drumming || view !== "present") return;
   view = "stopping";
+  pokemonSound();
+  document.querySelector(".intro-player")?.remove();
   if (await publish(null)) location.hash = "beheer";
   else { view = "present"; render(); }
 }
@@ -868,7 +899,8 @@ function step(dir){
   const nextI = Math.max(0, Math.min(slides.length - 1, si + dir));
   if (nextI === si) return;
   const s2 = slides[nextI];
-  if (dir > 0 && s2.type === "bonusWinner" && s2.bonus.ages?.some(Boolean)){
+  if (slides[si].type === "bonusSilhouette" || s2.type === "bonusSilhouette") pokemonSound(s2.type === "bonusSilhouette");
+  if (dir > 0 && s2.type === "bonusWinner" && !s2.bonus.pokemon && s2.bonus.ages?.some(Boolean)){
     drumming = true; si = nextI;
     playBonus(s2.bonus, frame => {
       const finished = frame.type === "bonusWinner";
@@ -880,7 +912,7 @@ function step(dir){
     return;
   }
   // The step that reveals #1: drumroll first.
-  if (dir > 0 && (s2.type === "bonusWinner" || (s2.type === "q" && s2.shown === s2.res.rows.length))){
+  if (dir > 0 && ((s2.type === "bonusWinner" && !s2.bonus.pokemon) || (s2.type === "q" && s2.shown === s2.res.rows.length))){
     drumming = true; si = nextI; showFrame(); drumroll(1.6);
     setTimeout(() => {
       drumming = false; showFrame();
@@ -922,7 +954,11 @@ function bonusPortrait(photo, alt, previous){
 function renderFrame(sl, host){
   const wrap = el("div", { class: host ? "show" : "show watching",
     onclick: host ? (e) => { if (!e.target.closest("button") && view === "present") step(1); } : null });
-  if (sl.type === "bonusAge"){
+  if (sl.type === "bonusSilhouette" || (sl.type === "bonusWinner" && sl.bonus.pokemon)){
+    const answer = sl.type === "bonusWinner";
+    wrap.append(el("div", { class: "center" }, el("div", { class: "pokemon-panel" + (answer ? " answer" : "") },
+      el("img", { src: sl.bonus.pokemon, alt: answer ? "It’s " + sl.bonus.name + "!" : "Who’s That Pokémon?" }))));
+  } else if (sl.type === "bonusAge"){
     wrap.append(el("div", { class: "center" }, bonusPortrait(sl.photo, "Wie is dit?", sl.previous)));
   } else if (sl.type === "bonus" || sl.type === "bonusWinner"){
     const reveal = sl.type === "bonusWinner" && (!host || !drumming);
@@ -936,6 +972,12 @@ function renderFrame(sl, host){
       el("div", { class: "big" }, "🎬🥁🍿"),
       el("h1", {}, sl.title || "Jaarquiz ✨🤖"),
       el("p", {}, `${sl.participants} jaargenoten hebben gestemd 🗳️💯 · ${sl.total} vragen 🧠`),
+      host ? el("button", { class: "btn small", onclick: (event) => {
+        event.stopPropagation();
+        event.currentTarget.replaceWith(el("iframe", { class: "intro-player", title: "Paloma Blanca – George Baker Selection",
+          src: "https://www.youtube-nocookie.com/embed/txpzAuXdpi0?autoplay=1",
+          allow: "autoplay; encrypted-media", referrerpolicy: "strict-origin-when-cross-origin" }));
+      } }, "▶ Speel Paloma Blanca") : null,
       el("p", {}, host ? "Tik of druk op spatie om te beginnen 🚀" : "De presentator bepaalt wanneer we verdergaan.")));
   } else if (sl.type === "q"){
     const ol = el("ol", {});
@@ -978,7 +1020,7 @@ window.addEventListener("keydown", (e) => {
   if (["ArrowLeft", "PageUp", "Backspace"].includes(e.key)){ e.preventDefault(); step(-1); }
   if (e.key === "Escape") stopPresentation();
   if (e.key === "n" || e.key === "N"){
-    if (["bonus", "bonusWinner"].includes(slides[si].type)){ step(1); return; }
+    if (slides[si].bonus){ step(1); return; }
     // jump to the start of the next question (or the awards)
     const cur = slides[si];
     let j = si + 1;
