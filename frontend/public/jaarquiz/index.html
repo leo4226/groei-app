@@ -132,9 +132,11 @@
   .show.watching{cursor:default;overflow:auto}
   #live-status:empty{display:none}
   .show .bonus-photo{width:100%;height:min(58dvh,680px);object-fit:contain;filter:drop-shadow(0 0 24px #d85bc9)}
-  .show .bonus-photo{animation:bonus-fade .45s ease-out}
-  @keyframes bonus-fade{from{opacity:.4;transform:scale(.975)}to{opacity:1;transform:scale(1)}}
-  @media(prefers-reduced-motion:reduce){.show .bonus-photo{animation:none}}
+  .show .bonus-portrait{width:100%;display:grid;place-items:center}
+  .show .bonus-portrait img{grid-area:1/1}
+  .show .bonus-portrait .incoming{animation:bonus-fade .75s ease-in-out}
+  @keyframes bonus-fade{from{opacity:0}to{opacity:1}}
+  @media(prefers-reduced-motion:reduce){.show .bonus-portrait .incoming{animation:none}}
   .show .bonus-winner{color:var(--accent)}
   .bonus-preview{width:min(92vw,1000px);max-height:92dvh;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:18px}
   .bonus-preview::backdrop{background:#000b}
@@ -621,7 +623,7 @@ function bonusSettings(){
   const after = el("input", { type: "number", min: 1, max: admin.config.questions.length,
     value: saved.after || Math.min(7, admin.config.questions.length) });
   const file = el("input", { type: "file", accept: "image/jpeg,image/png,image/webp" });
-  const ages = ["Baby", "Kleuter", "Tiener"].map((label, i) => ({ label, i,
+  const ages = ["Baby", "Kleuter", "Jonge tiener", "Jongvolwassene"].map((label, i) => ({ label, i,
     input: el("input", { type: "file", accept: "image/jpeg,image/png,image/webp" }),
   }));
   const status = el("p", { role: "status" }, saved.photo ? "Foto opgeslagen." : "Kies een foto.");
@@ -680,11 +682,11 @@ async function playBonus(bonus, show, active = () => true){
     if (active()) show({ type: "bonusWinner", bonus });
     return;
   }
-  const durations = frames.length === 3 ? [1900, 1250, 1250] : frames.map((_, i) => i ? 1250 : 1900);
+  const durations = frames.map((_, i) => i ? 1400 : 2000);
   drumroll(durations.reduce((total, ms) => total + ms, 0) / 1000);
   for (const [i, photo] of frames.entries()){
     if (!active()) return;
-    show({ type: "bonusAge", photo });
+    show({ type: "bonusAge", photo, previous: frames[i - 1] });
     await new Promise(resolve => setTimeout(resolve, durations[i]));
   }
   if (active()) show({ type: "bonusWinner", bonus });
@@ -912,15 +914,20 @@ function vLive(){
     el("h1", {}, "Jaarquiz live"),
     el("p", { role: "status" }, liveStatus || "Wachten tot de presentator begint…")));
 }
+function bonusPortrait(photo, alt, previous){
+  return el("div", { class: "bonus-portrait" },
+    previous ? el("img", { class: "bonus-photo", src: previous, alt: "", "aria-hidden": "true" }) : null,
+    el("img", { class: previous ? "bonus-photo incoming" : "bonus-photo", src: photo, alt }));
+}
 function renderFrame(sl, host){
   const wrap = el("div", { class: host ? "show" : "show watching",
     onclick: host ? (e) => { if (!e.target.closest("button") && view === "present") step(1); } : null });
   if (sl.type === "bonusAge"){
-    wrap.append(el("div", { class: "center" }, el("img", { class: "bonus-photo", src: sl.photo, alt: "Wie is dit?" })));
+    wrap.append(el("div", { class: "center" }, bonusPortrait(sl.photo, "Wie is dit?", sl.previous)));
   } else if (sl.type === "bonus" || sl.type === "bonusWinner"){
     const reveal = sl.type === "bonusWinner" && (!host || !drumming);
     wrap.append(el("div", { class: "center" }, reveal
-      ? [el("img", { class: "bonus-photo", src: sl.bonus.photo, alt: sl.bonus.name }),
+      ? [bonusPortrait(sl.bonus.photo, sl.bonus.name, (sl.bonus.ages || []).filter(Boolean).at(-1)),
         el("h1", { class: "bonus-winner" }, "#1 " + sl.bonus.name.toUpperCase())]
       : [el("div", { class: "kicker" }, "Uitslag"), el("h1", {}, sl.bonus.question),
         host && drumming ? el("div", { class: "big" }, "🥁🥁🥁") : null]));
