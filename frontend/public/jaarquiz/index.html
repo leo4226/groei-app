@@ -132,6 +132,9 @@
   .show.watching{cursor:default;overflow:auto}
   #live-status:empty{display:none}
   .show .bonus-photo{width:100%;height:min(58dvh,680px);object-fit:contain;filter:drop-shadow(0 0 24px #d85bc9)}
+  .show .bonus-photo{animation:bonus-fade .45s ease-out}
+  @keyframes bonus-fade{from{opacity:.4;transform:scale(.975)}to{opacity:1;transform:scale(1)}}
+  @media(prefers-reduced-motion:reduce){.show .bonus-photo{animation:none}}
   .show .bonus-winner{color:var(--accent)}
   .bonus-preview{width:min(92vw,1000px);max-height:92dvh;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:18px}
   .bonus-preview::backdrop{background:#000b}
@@ -309,7 +312,7 @@ const photos = () => Object.fromEntries((quiz?.people || []).map(p => [p.name, p
 function av(n){ const ph = photos()[n]; return ph ? el("img", { class: "av", src: ph, alt: "" }) : el("span", { class: "av" }, String(n).slice(0, 1).toUpperCase()); }
 const names = () => (quiz?.people || []).map(p => p.name);
 const optionsFor = q => q.options || names();
-const firstOpen = () => { const i = quiz.questions.findIndex(q => !(mine?.answers && Array.isArray(mine.answers[q.id]))); return i < 0 ? 0 : i; };
+const firstOpen = () => { const i = quiz.questions.findIndex(q => !(mine?.answers && Array.isArray(mine.answers[q.id]))); return i < 0 ? quiz.questions.length - 1 : i; };
 function cleanOrder(order, opts){
   const out = [];
   (Array.isArray(order) ? order : []).forEach(n => { if (opts.includes(n) && !out.includes(n)) out.push(n); });
@@ -618,6 +621,9 @@ function bonusSettings(){
   const after = el("input", { type: "number", min: 1, max: admin.config.questions.length,
     value: saved.after || Math.min(7, admin.config.questions.length) });
   const file = el("input", { type: "file", accept: "image/jpeg,image/png,image/webp" });
+  const ages = ["Baby", "Kleuter", "Tiener"].map((label, i) => ({ label, i,
+    input: el("input", { type: "file", accept: "image/jpeg,image/png,image/webp" }),
+  }));
   const status = el("p", { role: "status" }, saved.photo ? "Foto opgeslagen." : "Kies een foto.");
   const fields = () => ({ question: question.value.trim(), name: name.value.trim(), after: Number(after.value) });
   function valid(draft){
@@ -629,9 +635,12 @@ function bonusSettings(){
     try{
       draft.photo = file.files[0] ? await bonusPhoto(file.files[0]) : saved.photo;
       if (!draft.photo){ status.textContent = "Kies eerst een foto."; return; }
+      draft.ages = await Promise.all(ages.map(({ input, i }) =>
+        input.files[0] ? bonusPhoto(input.files[0]) : saved.ages?.[i] || null));
       localStorage.setItem(BONUS_KEY, JSON.stringify(draft));
       Object.assign(saved, draft);
       file.value = "";
+      ages.forEach(({ input }) => { input.value = ""; });
       status.textContent = "Opgeslagen in deze browser.";
     }catch(e){ status.textContent = "Opslaan mislukt. Probeer een kleinere jpg, png of webp."; }
   }
@@ -640,7 +649,10 @@ function bonusSettings(){
     el("p", {}, "Alleen zichtbaar op jouw presentatiescherm. Gebruik deze browser ook op de quizavond."),
     el("div", { class: "row" }, el("label", {}, "Na vraag ", after), el("label", {}, "Naam ", name)),
     el("p", {}, el("label", {}, "Vraag ", question)),
-    el("p", {}, el("label", {}, "Foto ", file)),
+    el("p", {}, el("label", {}, "Eindfoto (volwassen) ", file)),
+    el("details", {}, el("summary", {}, "Leeftijdsanimatie (optioneel)"),
+      ...ages.map(({ label, input, i }) => el("p", {}, el("label", {}, label + " ", input),
+        saved.ages?.[i] ? " Foto opgeslagen." : ""))),
     el("div", { class: "row" },
       el("button", { class: "btn small", onclick: save }, "Bonus opslaan"),
       el("button", { class: "btn small ghost", onclick: () => {
@@ -661,13 +673,31 @@ async function bonusPhoto(file){
     return canvas.toDataURL("image/jpeg", .88);
   }finally{ bitmap.close(); }
 }
+async function playBonus(bonus, show, active = () => true){
+  const frames = (bonus.ages || []).filter(Boolean);
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (!frames.length || reduced){
+    if (active()) show({ type: "bonusWinner", bonus });
+    return;
+  }
+  const durations = frames.length === 3 ? [1900, 1250, 1250] : frames.map((_, i) => i ? 1250 : 1900);
+  drumroll(durations.reduce((total, ms) => total + ms, 0) / 1000);
+  for (const [i, photo] of frames.entries()){
+    if (!active()) return;
+    show({ type: "bonusAge", photo });
+    await new Promise(resolve => setTimeout(resolve, durations[i]));
+  }
+  if (active()) show({ type: "bonusWinner", bonus });
+}
 function previewBonus(bonus){
   const dialog = el("dialog", { class: "bonus-preview" });
   const content = el("div", {}, renderFrame({ type: "bonus", bonus }, false));
   const reveal = el("button", { class: "btn small", onclick: () => {
-    content.replaceChildren(renderFrame({ type: "bonusWinner", bonus }, false));
     reveal.disabled = true;
-    confetti(4400, BONUS_EMOJI, true);
+    playBonus(bonus, frame => {
+      content.replaceChildren(renderFrame(frame, false));
+      if (frame.type === "bonusWinner") confetti(4400, BONUS_EMOJI, true);
+    }, () => dialog.open);
   } }, "Onthul");
   dialog.append(content, el("div", { class: "row" }, reveal,
     el("button", { class: "btn small ghost", onclick: () => dialog.close() }, "Sluiten")));
@@ -710,7 +740,7 @@ function vAdmin(){
     const t = el("table", {});
     admin.responses.forEach(r => t.append(el("tr", {},
       el("td", {}, r.voter),
-      el("td", { class: "r " + (r.done ? "ok" : "") }, r.done ? "klaar ✓" : `${r.answered}/${admin.config.questions.length}`),
+      el("td", { class: "r " + (r.done ? "ok" : "") }, r.done ? "klaar ✓" : `${r.answered}/${admin.config.questions.length}${r.answered === admin.config.questions.length ? " · nog niet ingestuurd" : ""}`),
       el("td", { class: "r" }, el("button", { class: "btn small ghost", onclick: async () => {
         try{ admin = await api("DELETE", "/admin/responses/" + encodeURIComponent(r.voter), undefined, adminHeaders()); toast(r.voter + " vrijgegeven"); }catch(e){ errorMsg = e.message; }
         render();
@@ -734,7 +764,7 @@ function vAdmin(){
 /* One step per tap: each question reveals its podium from third to first,
    with a drumroll before #1; then the awards one by one. Admin data, so it
    works before the results are revealed to everyone. */
-let slides = [], si = 0, drumming = false;
+let slides = [], si = 0, drumming = false, bonusFrame = null;
 function buildSlides(){
   const R = admin.results, Q = admin.config.questions;
   slides = [{ type: "intro" }];
@@ -769,7 +799,7 @@ async function copyInviteLink(){
 }
 function currentFrame(){
   const sl = slides[si];
-  if (sl.type === "bonus" || sl.type === "bonusWinner") return sl;
+  if (sl.type === "bonus" || sl.type === "bonusWinner") return bonusFrame || sl;
   if (sl.type === "intro") return {
     type: "intro", title: quiz.title,
     participants: admin.results.participants, total: quiz.questions.length,
@@ -836,7 +866,18 @@ function step(dir){
   const nextI = Math.max(0, Math.min(slides.length - 1, si + dir));
   if (nextI === si) return;
   const s2 = slides[nextI];
-  // the step that reveals #1: drumroll first
+  if (dir > 0 && s2.type === "bonusWinner" && s2.bonus.ages?.some(Boolean)){
+    drumming = true; si = nextI;
+    playBonus(s2.bonus, frame => {
+      const finished = frame.type === "bonusWinner";
+      bonusFrame = finished ? null : frame;
+      drumming = !finished;
+      showFrame();
+      if (finished) confetti(5200, BONUS_EMOJI, true);
+    });
+    return;
+  }
+  // The step that reveals #1: drumroll first.
   if (dir > 0 && (s2.type === "bonusWinner" || (s2.type === "q" && s2.shown === s2.res.rows.length))){
     drumming = true; si = nextI; showFrame(); drumroll(1.6);
     setTimeout(() => {
@@ -874,7 +915,9 @@ function vLive(){
 function renderFrame(sl, host){
   const wrap = el("div", { class: host ? "show" : "show watching",
     onclick: host ? (e) => { if (!e.target.closest("button") && view === "present") step(1); } : null });
-  if (sl.type === "bonus" || sl.type === "bonusWinner"){
+  if (sl.type === "bonusAge"){
+    wrap.append(el("div", { class: "center" }, el("img", { class: "bonus-photo", src: sl.photo, alt: "Wie is dit?" })));
+  } else if (sl.type === "bonus" || sl.type === "bonusWinner"){
     const reveal = sl.type === "bonusWinner" && (!host || !drumming);
     wrap.append(el("div", { class: "center" }, reveal
       ? [el("img", { class: "bonus-photo", src: sl.bonus.photo, alt: sl.bonus.name }),
