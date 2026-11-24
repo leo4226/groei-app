@@ -208,7 +208,10 @@
   .show ol li .av{width:clamp(28px,4.6vh,64px);height:clamp(28px,4.6vh,64px);font-size:clamp(12px,2vh,26px)}
   .show ol li .a{margin-left:auto;color:var(--muted);font-weight:500;font-size:.8em}
   .show ol li.hidden{color:var(--muted);background:transparent;border-style:dashed}
-  .show ol li.new{animation:pop .45s}
+  .show ol li.new{animation:podium-arrival .55s ease-out}
+  @keyframes podium-arrival{from{opacity:.3;transform:translateY(.55em) scale(.96)}to{opacity:1;transform:none}}
+  .show ol li.new .p{filter:drop-shadow(0 0 .25em #ffdd79)}
+  @media(prefers-reduced-motion:reduce){.show ol li.new{animation:none}}
   .show ol li.win{background:linear-gradient(90deg,#b8862a,var(--accent));color:#1b1630;border-color:var(--accent);transform:scale(1.02)}
   .show ol li.win .p,.show ol li.win .a{color:#1b1630}
   .show ol li.drum{animation:drum .12s infinite;color:var(--accent)}
@@ -1157,7 +1160,7 @@ function currentFrame(){
     type: "q", text: sl.q.text, top: sl.q.top, number: quiz.questions.indexOf(sl.q) + 1,
     total: quiz.questions.length, drumming,
     rows: sl.res.rows.map((row, i, rows) =>
-      i >= rows.length - sl.shown && !(i === 0 && drumming) ? { name: row.name, avg: row.avg } : null),
+      i >= rows.length - sl.shown && !(i === 0 && drumming) ? { name: row.name } : null),
   };
   if (sl.type === "awards") return {
     type: "awards", awards: sl.awards.map((award, i) => i < sl.shown ? award : null),
@@ -1297,6 +1300,24 @@ function step(dir){
   }
   if (dir > 0 && s2.type === "end") confetti(6000);
 }
+function rehearsalJump(){
+  const select = el("select", { "aria-label":"Spring naar een onderdeel", disabled:drumming });
+  select.append(el("option", { value:"" }, "Spring naar…"));
+  slides.forEach((slide, index) => {
+    let label;
+    if (slide.type === "intro") label = "Wachtkamer";
+    if (slide.type === "q" && !slide.shown) label = "Vraag " + (quiz.questions.indexOf(slide.q) + 1);
+    if (slide.type === "bonus") label = "Geheime bonus";
+    if (slide.type === "awards" && !slide.shown) label = "Prijzen";
+    if (slide.type === "end") label = "Afsluiting";
+    if (label) select.append(el("option", { value:String(index) }, label));
+  });
+  select.onchange = () => {
+    if (!rehearsal || drumming || select.value === "") return;
+    pokemonSound(); si = Number(select.value); bonusFrame = null; showFrame();
+  };
+  return select;
+}
 function vPresent(){
   const frame = currentFrame();
   const wrap = rehearsal && frame.type === "intro" ? waitingFrame("Privé oefenen · wachtkamer") : renderFrame(frame, true);
@@ -1309,7 +1330,7 @@ function vPresent(){
       render();
       publish(publicFrame);
     } }, hostMusic ? "■ Stop muziek" : "▶ Paloma Blanca"),
-    rehearsal ? null : el("button", { onclick: () => copyInviteLink() }, "Kopieer uitnodigingslink"),
+    rehearsal ? rehearsalJump() : el("button", { onclick: () => copyInviteLink() }, "Kopieer uitnodigingslink"),
     rehearsal ? null : el("button", { onclick: () => publish(currentFrame()) }, "Synchroniseer"),
     el("button", { onclick: stopPresentation }, "✖️ stop")));
   wrap.append(el("p", { id: "live-status", role: "status" }, liveStatus));
@@ -1335,7 +1356,7 @@ function bonusPortrait(photo, alt, previous){
 }
 function renderFrame(sl, host){
   const wrap = el("div", { class: host ? "show" : "show watching",
-    onclick: host ? (e) => { if (!e.target.closest("button") && view === "present") step(1); } : null });
+    onclick: host ? (e) => { if (!e.target.closest("button, select, option") && view === "present") step(1); } : null });
   if (sl.type === "bonusSilhouette" || (sl.type === "bonusWinner" && sl.bonus.pokemon)){
     const answer = sl.type === "bonusWinner";
     wrap.append(el("div", { class: "center" }, el("div", { class: "pokemon-panel" + (answer ? " answer" : " entrance") },
@@ -1362,7 +1383,7 @@ function renderFrame(sl, host){
     const ol = el("ol", {});
     const firstVisible = sl.rows.findIndex(Boolean);
     sl.rows.forEach((row, i) => {
-      const place = el("span", { class: "p" }, `#${i + 1}`);
+      const place = el("span", { class: "p", "aria-label": `Plaats ${i + 1}` }, row ? ["🥇","🥈","🥉"][i] : `#${i + 1}`);
       if (!row){
         const drum = i === 0 && sl.drumming;
         ol.append(el("li", { class: drum ? "hidden drum" : "hidden" }, place, drum ? "🥁🥁🥁 …" : "❓"));
@@ -1370,7 +1391,7 @@ function renderFrame(sl, host){
       }
       const winner = i === 0;
       ol.append(el("li", { class: (winner ? "win " : "") + (i === firstVisible ? "new" : "") },
-        place, av(row.name), row.name + (winner ? " 👑🔥" : ""), el("span", { class: "a" }, `gem. ${row.avg.toFixed(1)}`)));
+        place, av(row.name), el("strong", {}, row.name)));
     });
     wrap.append(
       el("div", { class: "kicker" }, `Vraag ${sl.number} van ${sl.total} 🎯`),
@@ -1394,7 +1415,7 @@ function renderFrame(sl, host){
 }
 window.addEventListener("keydown", (e) => {
   if (view !== "present" || drumming || e.repeat) return;
-  if (e.target.closest?.("button, a") && [" ", "Enter"].includes(e.key)) return;
+  if (e.target.closest?.("button, a, select, option") && [" ", "Enter"].includes(e.key)) return;
   if (["ArrowRight", " ", "Enter", "PageDown"].includes(e.key)){ e.preventDefault(); step(1); }
   if (["ArrowLeft", "PageUp", "Backspace"].includes(e.key)){ e.preventDefault(); step(-1); }
   if (e.key === "Escape") stopPresentation();
