@@ -182,6 +182,8 @@
   .waiting-arena{position:absolute;inset:0;overflow:hidden;touch-action:none;background:radial-gradient(ellipse at 40% 52%,#35236b,#14132a 78%);border:2px solid #a293d1}
   .waiting-circle{position:absolute;left:0;top:0;width:34px;height:34px;border-radius:50%;background:hsl(var(--hue) 85% 65%);box-shadow:0 0 14px #0007;pointer-events:none}
   .waiting-circle.mine{outline:2px solid white;outline-offset:3px;pointer-events:auto;cursor:grab}
+  .waiting-circle img{width:100%;height:100%;object-fit:cover;border-radius:50%;pointer-events:none}
+  .btn.launch{background:#178044;color:white;border:2px solid #60e593}
   .waiting-circle.mine:active{cursor:grabbing}
   .waiting-circle{transition:opacity .32s ease}
   .waiting-circle.out{opacity:0;pointer-events:none}
@@ -372,7 +374,7 @@ function sendCircle(circle, hit){
   if (!hit) heartbeatBusy = true;
   api("POST", `/${encodeURIComponent(CODE)}/waiting-room`, {
     visitor: id, x: limit(x,0,1), y: limit(y,0,1), vx: limit(vx,-4,4), vy: limit(vy,-4,4), hit,
-  }).catch(() => { nextHeartbeat = 0; }).finally(() => { if (!hit) heartbeatBusy = false; });
+  }, session?.token ? { "X-Quiz-Token": session.token } : {}).catch(() => { nextHeartbeat = 0; }).finally(() => { if (!hit) heartbeatBusy = false; });
 }
 function clearRoom(){
   circles.clear(); arena.replaceChildren(); drag = null; flight = false; nextHeartbeat = 0;
@@ -382,7 +384,11 @@ function handleImpact(attacker, target){
   if (!flight || drag || attacker.id !== visitorId) return;
   if (Math.hypot(attacker.vx, attacker.vy) < .42) return;
   flight = false;
-  if (rehearsal) target.out_until = Date.now() / 1000 + 5;
+  if (rehearsal){
+    target.out_until = Date.now() / 1000 + 5;
+    target.streak = 0;
+    attacker.streak = (attacker.streak || 0) + 1;
+  }
   else sendCircle(attacker, target.id);
 }
 
@@ -406,11 +412,11 @@ function reconcileCircles(snapshot){
   for (const [id, state] of Object.entries(snapshot)){
     if (id === visitorId){
       const own = circles.get(id);
-      if (own) own.out_until = state.out_until || 0;
+      if (own) Object.assign(own, { out_until: state.out_until || 0, streak: state.streak, voter: state.voter });
       continue;
     }
     const circle = circles.get(id) || roomCircle(id, state);
-    const signature = `${state.x},${state.y},${state.vx},${state.vy},${state.out_until}`;
+    const signature = `${state.x},${state.y},${state.vx},${state.vy},${state.out_until},${state.streak},${state.voter}`;
     if (circle.signature !== signature){
       Object.assign(circle, state, { signature });
     }
@@ -418,7 +424,9 @@ function reconcileCircles(snapshot){
   const count = document.querySelector(".waiting-count");
   if (count) count.textContent = `${circles.size} in de wachtkamer`;
 }
+function circleScale(c){ return 1 + .20 * Math.min(c.streak || 0, 5); }
 function bounceWalls(c, width, height){
+  const radius = diameter * circleScale(c) / 2;
   if ((c.x < radius / width && c.vx < 0) || (c.x > 1 - radius / width && c.vx > 0)) c.vx *= -bounce;
   if ((c.y < radius / height && c.vy < 0) || (c.y > 1 - radius / height && c.vy > 0)) c.vy *= -bounce;
   c.x = limit(c.x, radius / width, 1 - radius / width);
@@ -427,11 +435,12 @@ function bounceWalls(c, width, height){
 function collideCircles(a, b, width, height){
   const dx = (b.x - a.x) * width, dy = (b.y - a.y) * height;
   const distance = Math.hypot(dx, dy);
-  if (distance >= diameter) return;
+  const contact = radius * (circleScale(a) + circleScale(b));
+  if (distance >= contact) return;
   const nx = distance ? dx / distance : 1, ny = distance ? dy / distance : 0;
   const fixedA = drag && a.id === visitorId, fixedB = drag && b.id === visitorId;
   const wa = fixedA ? 0 : fixedB ? 1 : .5, wb = 1 - wa;
-  const overlap = diameter - distance;
+  const overlap = contact - distance;
   a.x -= overlap * nx * wa / width; a.y -= overlap * ny * wa / height;
   b.x += overlap * nx * wb / width; b.y += overlap * ny * wb / height;
   const closing = (a.vx - b.vx) * width * nx + (a.vy - b.vy) * height * ny;
@@ -478,7 +487,13 @@ function tickRoom(now){
     }
     for (const c of bodies){
       if (!(drag && c.id === visitorId)) bounceWalls(c, width, height);
-      c.node.style.transform = `translate(${c.x * width - radius}px,${c.y * height - radius}px)`;
+      if (c.portraitFor !== c.voter){
+        c.portraitFor = c.voter;
+        const photo = quiz?.people?.find(p => p.name === c.voter)?.photo;
+        if (photo) c.node.replaceChildren(el("img", { src: photo, alt: "", draggable: false }));
+        else c.node.replaceChildren();
+      }
+      c.node.style.transform = `translate(${c.x * width - radius}px,${c.y * height - radius}px) scale(${circleScale(c)})`;
     }
   }
   roomFrame = requestAnimationFrame(tickRoom);
@@ -530,11 +545,20 @@ function waitingFrame(title){
 }
 const musicDock = el("div", { class: "music-dock", hidden: true });
 document.body.append(musicDock);
+let fadeEnd = 0, faded = false, fadeTimer = 0;
 function syncMusic(){
   const playing = ADMIN ? view === "present" && hostMusic : listenerMusic && !!liveSlide?.music;
+  clearTimeout(fadeTimer);
+  const remaining = (ADMIN ? fadeEnd : liveSlide?.fadeEnd || 0) - Date.now();
+  if (!playing && remaining > 0 && musicDock.firstChild && (!ADMIN || view === "present") && (ADMIN || listenerMusic)){
+    musicDock.firstChild.contentWindow?.postMessage(JSON.stringify({event:"command",func:"setVolume",args:[Math.round(Math.min(1,remaining/4500)*100)]}), "https://www.youtube-nocookie.com");
+    fadeTimer = setTimeout(syncMusic, 100);
+    return;
+  }
+  if (playing && musicDock.firstChild) musicDock.firstChild.contentWindow?.postMessage(JSON.stringify({event:"command",func:"setVolume",args:[100]}),"https://www.youtube-nocookie.com");
   if (playing && !musicDock.firstChild){
     musicDock.append(el("iframe", { title: "Paloma Blanca – George Baker Selection",
-      src: "https://www.youtube-nocookie.com/embed/txpzAuXdpi0?autoplay=1&loop=1&playlist=txpzAuXdpi0",
+      src: "https://www.youtube-nocookie.com/embed/txpzAuXdpi0?enablejsapi=1&autoplay=1&loop=1&playlist=txpzAuXdpi0",
       allow: "autoplay; encrypted-media", referrerpolicy: "strict-origin-when-cross-origin" }));
   } else if (!playing && musicDock.firstChild) musicDock.replaceChildren();
   musicDock.hidden = !playing;
@@ -891,6 +915,7 @@ function bonusSettings(){
   return el("div", { class: "card" },
     el("h2", {}, "Geheime bonusuitslag"),
     el("p", {}, "Alleen zichtbaar op jouw presentatiescherm. Gebruik deze browser ook op de quizavond."),
+    el("details", {}, el("summary", {}, "Bonus instellen"),
     el("div", { class: "row" }, el("label", {}, "Na vraag ", after), el("label", {}, "Naam ", name)),
     el("p", {}, el("label", {}, "Vraag ", question)),
     el("p", {}, el("label", {}, "Eindfoto (volwassen) ", file)),
@@ -898,8 +923,8 @@ function bonusSettings(){
     el("details", {}, el("summary", {}, "Leeftijdsanimatie (optioneel)"),
       ...ages.map(({ label, input, i }) => el("p", {}, el("label", {}, label + " ", input),
         saved.ages?.[i] ? " Foto opgeslagen." : ""))),
+    el("button", { class: "btn small", onclick: save }, "Bonus opslaan")),
     el("div", { class: "row" },
-      el("button", { class: "btn small", onclick: save }, "Bonus opslaan"),
       el("button", { class: "btn small ghost", onclick: async (event) => {
         const button = event.currentTarget;
         button.disabled = true;
@@ -912,7 +937,7 @@ function bonusSettings(){
           previewBonus(draft);
         }catch(e){ status.textContent = "Het beeld kon niet worden geopend."; }
         finally{ button.disabled = false; }
-      } }, "Privé testen"),
+      } }, "Test geheime bonus"),
       el("button", { class: "btn small ghost", onclick: () => { localStorage.removeItem(BONUS_KEY); render(); } }, "Bonus uitschakelen")),
     status);
 }
@@ -1043,7 +1068,7 @@ function vAdmin(){
 
     out.push(bonusSettings());
     out.push(el("button", { class: "btn", style: "margin-bottom:14px", onclick: startRehearsal }, "🎬 Privé testen · hele presentatie"));
-    out.push(el("button", { class: "btn", style: "margin-bottom:14px", onclick: () => { location.hash = "presenteer"; } }, "🎬 Presenteer de uitslag 🥁✨"));
+    out.push(el("button", { class: "btn launch", style: "margin-bottom:14px", onclick: () => { location.hash = "presenteer"; } }, "🎬 Presenteer de uitslag 🥁✨"));
     const resultsPanel = el("div", {});
     const resultDetails = el("details", { class: "card" },
       el("summary", {}, "Toon uitslagen in Beheer"), resultsPanel);
@@ -1076,6 +1101,7 @@ function demoBonus(after){
   return { after, name: "Demo", question: "Wie zit er achter het silhouet?", pokemon: "data:image/svg+xml," + encodeURIComponent(art) };
 }
 function buildSlides(){
+  faded = false; fadeEnd = 0;
   const Q = admin.config.questions;
   const R = rehearsal ? {
     participants: 3,
@@ -1143,7 +1169,7 @@ function publish(slide){
   // Only ordinary presentation frames may leave the presenter browser.
   if (slide && !["intro", "q", "awards", "end"].includes(slide.type)) return Promise.resolve(true);
   publicFrame = slide;
-  const payload = slide && { ...slide, music: hostMusic };
+  const payload = slide && { ...slide, music: hostMusic, fadeEnd };
   publishQueue = publishQueue.then(async () => {
     try{
       await api("PUT", "/admin/presentation", { join_code: admin.join_code, slide: payload }, adminHeaders());
@@ -1180,6 +1206,11 @@ async function pollLive(){
     const { slide, circles: snapshot = {} } = await api("GET", `/${encodeURIComponent(CODE)}/presentation`);
     if (liveStatus || JSON.stringify(slide) !== JSON.stringify(liveSlide)){
       liveStatus = "";
+      if (listenerMusic && slide?.type === "q" && !slide.drumming){
+        const place = slide.rows.findIndex(Boolean);
+        const previous = liveSlide?.type === "q" && liveSlide.number === slide.number ? liveSlide.rows.findIndex(Boolean) : -1;
+        if (place >= 0 && (previous < 0 || place < previous)) podiumCue(place);
+      }
       liveSlide = slide;
       render();
     }
@@ -1204,11 +1235,34 @@ async function pollLive(){
   }
   setTimeout(pollLive, liveSlide?.type === "intro" ? 850 : LIVE || liveSlide ? 1500 : 4000);
 }
+function podiumCue(place){
+  try{
+    audio ||= new (window.AudioContext || window.webkitAudioContext)();
+    audio.resume().catch(()=>{});
+    const notes = [[72,76,79,84],[62,69,74],[55,60]][place] || [60];
+    notes.forEach((note,i)=>{
+      const time = audio.currentTime + i*.105;
+      const osc = audio.createOscillator(), gain = audio.createGain();
+      osc.type = place === 2 ? "sine" : "triangle";
+      osc.frequency.setValueAtTime(440*2**((note-69)/12),time);
+      gain.gain.setValueAtTime(.001,time); gain.gain.exponentialRampToValueAtTime(.14,time+.02);
+      gain.gain.exponentialRampToValueAtTime(.001,time+.33);
+      osc.connect(gain).connect(audio.destination); osc.start(time); osc.stop(time+.34);
+    });
+    if (place === 1 && window.speechSynthesis){
+      const cheer = new SpeechSynthesisUtterance("Ooooh!"); cheer.pitch=1.32; cheer.rate=.85;
+      window.speechSynthesis.speak(cheer);
+    }
+  }catch(e){}
+}
 function step(dir){
   if (drumming) return;
   const nextI = Math.max(0, Math.min(slides.length - 1, si + dir));
   if (nextI === si) return;
   const s2 = slides[nextI];
+  if (dir > 0 && s2.type === "q" && s2.shown && !faded){
+    faded = true; if (hostMusic){ fadeEnd = Date.now()+4500; hostMusic = false; }
+  }
   if (slides[si].type === "bonusSilhouette" || s2.type === "bonusSilhouette") pokemonSound(s2.type === "bonusSilhouette");
   if (dir > 0 && s2.type === "bonusWinner" && !s2.bonus.pokemon && s2.bonus.ages?.some(Boolean)){
     drumming = true; si = nextI;
@@ -1227,7 +1281,7 @@ function step(dir){
     setTimeout(() => {
       drumming = false; showFrame();
       if (s2.type === "bonusWinner") confetti(5200, BONUS_EMOJI, true);
-      else confetti(4200, PODIUM_EMOJI[0]);
+      else { podiumCue(0); confetti(4200, PODIUM_EMOJI[0], true); }
     }, 1600);
     return;
   }
@@ -1237,7 +1291,10 @@ function step(dir){
       if (view === "present" && slides[si] === s2) confetti(4500, ["🎆", "🎇", "💥", "✨", ...BONUS_EMOJI], true);
     });
   }
-  if (dir > 0 && s2.type === "q" && s2.shown) confetti(2300, PODIUM_EMOJI[s2.res.rows.length - s2.shown]);
+  if (dir > 0 && s2.type === "q" && s2.shown){
+    const place = s2.res.rows.length - s2.shown;
+    podiumCue(place); confetti(2300, PODIUM_EMOJI[place]);
+  }
   if (dir > 0 && s2.type === "end") confetti(6000);
 }
 function vPresent(){
@@ -1248,7 +1305,7 @@ function vPresent(){
     el("span", {}, `${rehearsal ? "Privé oefenen · " : ""}${si + 1} / ${slides.length}`),
     el("button", { onclick: () => step(1) }, "Verder →"),
     el("button", { onclick: () => {
-      hostMusic = !hostMusic;
+      fadeEnd = 0; hostMusic = !hostMusic;
       render();
       publish(publicFrame);
     } }, hostMusic ? "■ Stop muziek" : "▶ Paloma Blanca"),
@@ -1261,7 +1318,7 @@ function vPresent(){
 function vLive(){
   if (liveSlide){
     const frame = liveSlide.type === "intro" ? waitingFrame(liveSlide.title) : renderFrame(liveSlide, false);
-    if (liveSlide.music) frame.append(el("div", { class: "bar" },
+    if (liveSlide.music || liveSlide.type === "q" || listenerMusic) frame.append(el("div", { class: "bar" },
       el("button", { onclick: () => { listenerMusic = !listenerMusic; render(); } },
         listenerMusic ? "Geluid uit" : "Geluid aan")));
     if (liveStatus) frame.append(el("p", { role: "status" }, liveStatus));
