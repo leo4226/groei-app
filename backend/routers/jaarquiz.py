@@ -160,6 +160,7 @@ class WaitingVisitor(BaseModel):
     y: float = Field(default=0.5, ge=0, le=1)
     vx: float = Field(default=0, ge=-4, le=4)
     vy: float = Field(default=0, ge=-4, le=4)
+    hit: Optional[str] = Field(default=None, pattern=r"^[0-9a-f]{32}$")
 
 
 def _active_visitors(stored: dict) -> dict:
@@ -512,11 +513,22 @@ async def waiting_room(code: str, body: WaitingVisitor, response: Response, db=D
         if (stored.get("_presentation") or {}).get("type") != "intro":
             return {"visitors": []}
         visitors = _active_visitors(stored)
-        if body.visitor in visitors or len(visitors) < 40:
+        now = datetime.now(timezone.utc).timestamp()
+        previous_visitor = visitors.get(body.visitor)
+        out_until = (previous_visitor or {}).get("out_until", 0)
+        if previous_visitor is not None or len(visitors) < 40:
             visitors[body.visitor] = {
-                "seen": int(datetime.now(timezone.utc).timestamp()),
-                **body.model_dump(exclude={"visitor"}),
+                "seen": int(now),
+                "out_until": out_until,
+                **body.model_dump(exclude={"visitor", "hit"}),
             }
+            victim = visitors.get(body.hit) if body.hit != body.visitor else None
+            if (
+                victim and out_until <= now and victim.get("out_until", 0) <= now
+                and abs(body.x - victim["x"]) <= 0.19
+                and abs(body.y - victim["y"]) <= 0.16
+            ):
+                victim.update(out_until=now + 5, vx=0, vy=0)
         stored["_waiting_visitors"] = visitors
         updated = await db.execute_fetchall(
             "UPDATE jaarquiz SET config = ? WHERE id = ? AND join_code = ? AND config = ? RETURNING id",

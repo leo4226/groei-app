@@ -231,3 +231,36 @@ async def test_waiting_room_shares_positions_and_clears_them_when_quiz_starts(cl
         assert (await client.put(control, json={"join_code": code, "slide": {"type": slide_type}},
                                  headers=admin_header)).status_code == 200
     assert (await client.get(f"{path}/presentation")).json()["circles"] == {}
+
+
+async def test_waiting_room_knockout_lasts_five_seconds(client, admin_header):
+    from time import time
+
+    code = await _setup(client, admin_header)
+    path = f"/api/jaarquiz/{code}"
+    control = "/api/jaarquiz/admin/presentation"
+    assert (await client.put(control, json={"join_code": code, "slide": {"type": "intro"}},
+                             headers=admin_header)).status_code == 200
+    attacker, victim = "a" * 32, "b" * 32
+
+    async def send(visitor, x, hit=None):
+        result = await client.post(f"{path}/waiting-room", json={
+            "visitor": visitor, "x": x, "y": 0.5, "hit": hit,
+        })
+        assert result.status_code == 200
+
+    async def circles():
+        return (await client.get(f"{path}/presentation")).json()["circles"]
+
+    await send(victim, 0.5)
+    await send(attacker, 0.1, victim)
+    assert (await circles())[victim]["out_until"] == 0
+    started = time()
+    await send(attacker, 0.48, victim)
+    deadline = (await circles())[victim]["out_until"]
+    assert started + 4.8 <= deadline <= time() + 5.2
+    await send(victim, 0.5, attacker)
+    await send(attacker, 0.48, victim)
+    room = await circles()
+    assert room[attacker]["out_until"] == 0
+    assert room[victim]["out_until"] == deadline

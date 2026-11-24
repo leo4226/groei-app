@@ -183,6 +183,10 @@
   .waiting-circle{position:absolute;left:0;top:0;width:34px;height:34px;border-radius:50%;background:hsl(var(--hue) 85% 65%);box-shadow:0 0 14px #0007;pointer-events:none}
   .waiting-circle.mine{outline:2px solid white;outline-offset:3px;pointer-events:auto;cursor:grab}
   .waiting-circle.mine:active{cursor:grabbing}
+  .waiting-circle{transition:opacity .32s ease}
+  .waiting-circle.out{opacity:0;pointer-events:none}
+  .waiting-screen .bar{right:12px;display:flex;flex-wrap:wrap;background:#17152ce8;padding:8px}
+  @media(prefers-reduced-motion:reduce){.waiting-circle{transition:none}}
   .waiting-heading{position:absolute;left:12px;top:12px;max-width:min(55vw,360px);z-index:1;pointer-events:none;text-shadow:0 2px 8px #000}
   .waiting-heading h1{font-size:clamp(20px,4vw,36px)}
   .waiting-screen .bar,.waiting-screen [role=status]{position:absolute;left:12px;bottom:16px;z-index:2}
@@ -359,6 +363,28 @@ const circles = new Map();
 const radius = 17, diameter = radius * 2, bounce = .88;
 const limit = (v, min, max) => Math.max(min, Math.min(max, v));
 let nextHeartbeat = 0, roomFrame = 0, lastFrame = 0, drag = null;
+let rehearsal = false, flight = false, heartbeatBusy = false;
+
+function sendCircle(circle, hit){
+  if (rehearsal || heartbeatBusy && !hit) return;
+  const { id, x, y, vx, vy } = circle;
+  if (id !== visitorId) return;
+  if (!hit) heartbeatBusy = true;
+  api("POST", `/${encodeURIComponent(CODE)}/waiting-room`, {
+    visitor: id, x: limit(x,0,1), y: limit(y,0,1), vx: limit(vx,-4,4), vy: limit(vy,-4,4), hit,
+  }).catch(() => { nextHeartbeat = 0; }).finally(() => { if (!hit) heartbeatBusy = false; });
+}
+function clearRoom(){
+  circles.clear(); arena.replaceChildren(); drag = null; flight = false; nextHeartbeat = 0;
+}
+function isOut(circle){ return circle.out_until > Date.now() / 1000; }
+function handleImpact(attacker, target){
+  if (!flight || drag || attacker.id !== visitorId) return;
+  if (Math.hypot(attacker.vx, attacker.vy) < .42) return;
+  flight = false;
+  if (rehearsal) target.out_until = Date.now() / 1000 + 5;
+  else sendCircle(attacker, target.id);
+}
 
 function roomCircle(id, state){
   const own = id === visitorId;
@@ -378,9 +404,13 @@ function reconcileCircles(snapshot){
     circles.delete(id);
   }
   for (const [id, state] of Object.entries(snapshot)){
-    if (id === visitorId) continue;
+    if (id === visitorId){
+      const own = circles.get(id);
+      if (own) own.out_until = state.out_until || 0;
+      continue;
+    }
     const circle = circles.get(id) || roomCircle(id, state);
-    const signature = `${state.x},${state.y},${state.vx},${state.vy}`;
+    const signature = `${state.x},${state.y},${state.vx},${state.vy},${state.out_until}`;
     if (circle.signature !== signature){
       Object.assign(circle, state, { signature });
     }
@@ -406,6 +436,8 @@ function collideCircles(a, b, width, height){
   b.x += overlap * nx * wb / width; b.y += overlap * ny * wb / height;
   const closing = (a.vx - b.vx) * width * nx + (a.vy - b.vy) * height * ny;
   if (closing <= 0) return;
+  if (a.id === visitorId && a.vx * width * nx + a.vy * height * ny > 0) handleImpact(a, b);
+  if (b.id === visitorId && b.vx * width * nx + b.vy * height * ny < 0) handleImpact(b, a);
   const impulse = (1 + bounce) * closing;
   a.vx -= impulse * nx * wa / width; a.vy -= impulse * ny * wa / height;
   b.vx += impulse * nx * wb / width; b.vy += impulse * ny * wb / height;
@@ -417,7 +449,23 @@ function tickRoom(now){
   lastFrame = now;
   const width = arena.clientWidth, height = arena.clientHeight;
   if (width > diameter && height > diameter){
-    const bodies = [...circles.values()];
+    const bodies = [...circles.values()].filter(c => {
+      const out = isOut(c);
+      c.node.classList.toggle("out", out);
+      if (out && !c.wasOut){
+        c.vx = c.vy = 0;
+        if (c.id === visitorId){
+          if (drag && arena.hasPointerCapture(drag.id)) arena.releasePointerCapture(drag.id);
+          drag = null; flight = false;
+        }
+      }
+      if (!out && c.wasOut && (c.id === visitorId || rehearsal)){
+        c.x = .18 + Math.random() * .64; c.y = .25 + Math.random() * .5;
+        nextHeartbeat = 0;
+      }
+      c.wasOut = out;
+      return !out;
+    });
     const damp = Math.pow(.60, dt);
     for (const c of bodies){
       if (drag && c.id === visitorId) continue;
@@ -437,7 +485,8 @@ function tickRoom(now){
 }
 arena.addEventListener("pointerdown", e => {
   const c = circles.get(visitorId);
-  if (drag || e.target !== c?.node || e.button !== 0) return;
+  if (drag || e.target !== c?.node || e.button !== 0 || isOut(c)) return;
+  flight = false;
   const rect = arena.getBoundingClientRect();
   drag = { id: e.pointerId, left: rect.left + arena.clientLeft, top: rect.top + arena.clientTop,
     offsetX: e.clientX - rect.left - arena.clientLeft - c.x * arena.clientWidth,
@@ -462,6 +511,7 @@ function releaseCircle(e){
   const c = circles.get(visitorId);
   if (e.type !== "pointerup" || performance.now() - drag.time > 90) c.vx = c.vy = 0;
   drag = null;
+  flight = Math.hypot(c.vx, c.vy) >= .42;
   nextHeartbeat = 0;
 }
 for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) arena.addEventListener(type, releaseCircle);
@@ -469,11 +519,14 @@ function waitingFrame(title){
   if (!circles.has(visitorId)){
     roomCircle(visitorId, { x: .18 + Math.random() * .64, y: .25 + Math.random() * .5, vx: 0, vy: 0 });
   }
+  if (rehearsal && circles.size === 1){
+    [[.33,.42],[.67,.50],[.46,.67]].forEach(([x,y], i) => roomCircle((i+4).toString(16).repeat(32), {x,y,vx:0,vy:0}));
+  }
   if (!roomFrame) roomFrame = requestAnimationFrame(tickRoom);
   return el("div", { class: "show watching waiting-screen" }, arena,
     el("div", { class: "waiting-heading" }, el("h1", {}, title || "Jaarquiz"),
       el("p", { class: "waiting-count" }, `${circles.size} in de wachtkamer`),
-      el("p", {}, "Sleep je cirkel met de witte rand en laat los om te gooien.")));
+      el("p", {}, "Gooi je cirkel tegen een andere. Een geraakte cirkel komt na 5 seconden terug.")));
 }
 const musicDock = el("div", { class: "music-dock", hidden: true });
 document.body.append(musicDock);
@@ -989,6 +1042,7 @@ function vAdmin(){
       el("p", { style: "font-size:13px;margin:10px 0 0" }, "Vrijgeven wist die persoon zijn antwoorden, zodat de naam opnieuw gekozen kan worden.")));
 
     out.push(bonusSettings());
+    out.push(el("button", { class: "btn", style: "margin-bottom:14px", onclick: startRehearsal }, "🎬 Privé testen · hele presentatie"));
     out.push(el("button", { class: "btn", style: "margin-bottom:14px", onclick: () => { location.hash = "presenteer"; } }, "🎬 Presenteer de uitslag 🥁✨"));
     const resultsPanel = el("div", {});
     const resultDetails = el("details", { class: "card" },
@@ -1009,10 +1063,31 @@ function vAdmin(){
    with a drumroll before #1; then the awards one by one. Admin data, so it
    works before the results are revealed to everyone. */
 let slides = [], si = 0, drumming = false, bonusFrame = null;
+let presentationResults;
+function startRehearsal(){
+  rehearsal = true;
+  si = 0; bonusFrame = null; hostMusic = true;
+  buildSlides();
+  view = "present";
+  showFrame();
+}
+function demoBonus(after){
+  const art = '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="720" viewBox="0 0 640 720"><path fill="#2789c9" d="M0 0h640v360H0z"/><path fill="#6940a4" d="M0 360h640v360H0z"/><circle cx="190" cy="180" r="90" fill="#151326"/><circle cx="190" cy="540" r="90" fill="#ffd652"/><g fill="white" font-family="sans-serif" font-size="34" font-weight="bold"><text x="310" y="194">Wie is dit?</text><text x="310" y="554">Demo!</text></g></svg>';
+  return { after, name: "Demo", question: "Wie zit er achter het silhouet?", pokemon: "data:image/svg+xml," + encodeURIComponent(art) };
+}
 function buildSlides(){
-  const R = admin.results, Q = admin.config.questions;
+  const Q = admin.config.questions;
+  const R = rehearsal ? {
+    participants: 3,
+    questions: Q.map(q => ({ id: q.id, rows: ["Voorbeeld A", "Voorbeeld B", "Voorbeeld C"].map((name, i) =>
+      ({ name, avg: 1.2 + i * .8, min: 1, max: i + 1 })) })),
+    self_knowledge: [{name:"Voorbeeld A",off_by:.4},{name:"Voorbeeld C",off_by:1.7}],
+  } : admin.results;
+  presentationResults = R;
   slides = [{ type: "intro" }];
-  const bonus = store(BONUS_KEY);
+  const savedBonus = store(BONUS_KEY);
+  const bonus = rehearsal && !(savedBonus?.photo || savedBonus?.pokemon)
+    ? demoBonus(Math.min(7, Q.length)) : savedBonus;
   Q.forEach((q, i) => {
     const res = R.questions.find(row => row.id === q.id);
     if (res?.rows.length){
@@ -1050,7 +1125,7 @@ function currentFrame(){
   if (sl.bonus) return bonusFrame || sl;
   if (sl.type === "intro") return {
     type: "intro", title: quiz.title,
-    participants: admin.results.participants, total: quiz.questions.length,
+    participants: presentationResults.participants, total: quiz.questions.length,
   };
   if (sl.type === "q") return {
     type: "q", text: sl.q.text, top: sl.q.top, number: quiz.questions.indexOf(sl.q) + 1,
@@ -1064,6 +1139,7 @@ function currentFrame(){
   return { type: "end" };
 }
 function publish(slide){
+  if (rehearsal) return Promise.resolve(true);
   // Only ordinary presentation frames may leave the presenter browser.
   if (slide && !["intro", "q", "awards", "end"].includes(slide.type)) return Promise.resolve(true);
   publicFrame = slide;
@@ -1089,6 +1165,10 @@ function showFrame(){
 }
 async function stopPresentation(){
   if (drumming || view !== "present") return;
+  if (rehearsal){
+    rehearsal = false; view = "admin"; hostMusic = false; pokemonSound(); clearRoom(); render();
+    return;
+  }
   view = "stopping";
   pokemonSound();
   syncMusic();
@@ -1109,15 +1189,10 @@ async function pollLive(){
       if (own && Date.now() >= nextHeartbeat){
         const moving = drag || Math.hypot(own.vx, own.vy) > .035;
         nextHeartbeat = Date.now() + (moving ? 850 : 4200);
-        const { x, y, vx, vy } = own;
-        try{
-          await api("POST", `/${encodeURIComponent(CODE)}/waiting-room`, {
-            visitor: visitorId, x, y, vx: limit(vx, -4, 4), vy: limit(vy, -4, 4),
-          });
-        }catch(e){ /* Retry on the next heartbeat. */ }
+        sendCircle(own);
       }
     } else if (circles.size){
-      circles.clear(); arena.replaceChildren(); drag = null; nextHeartbeat = 0;
+      clearRoom();
     }
   }catch(e){
     if (LIVE || liveSlide){
@@ -1166,18 +1241,19 @@ function step(dir){
   if (dir > 0 && s2.type === "end") confetti(6000);
 }
 function vPresent(){
-  const wrap = renderFrame(currentFrame(), true);
+  const frame = currentFrame();
+  const wrap = rehearsal && frame.type === "intro" ? waitingFrame("Privé oefenen · wachtkamer") : renderFrame(frame, true);
   wrap.append(el("div", { class: "bar" },
     el("button", { onclick: () => step(-1) }, "⬅️ terug"),
-    el("span", {}, `${si + 1} / ${slides.length}`),
+    el("span", {}, `${rehearsal ? "Privé oefenen · " : ""}${si + 1} / ${slides.length}`),
     el("button", { onclick: () => step(1) }, "Verder →"),
     el("button", { onclick: () => {
       hostMusic = !hostMusic;
       render();
       publish(publicFrame);
     } }, hostMusic ? "■ Stop muziek" : "▶ Paloma Blanca"),
-    el("button", { onclick: () => copyInviteLink() }, "Kopieer uitnodigingslink"),
-    el("button", { onclick: () => publish(currentFrame()) }, "Synchroniseer"),
+    rehearsal ? null : el("button", { onclick: () => copyInviteLink() }, "Kopieer uitnodigingslink"),
+    rehearsal ? null : el("button", { onclick: () => publish(currentFrame()) }, "Synchroniseer"),
     el("button", { onclick: stopPresentation }, "✖️ stop")));
   wrap.append(el("p", { id: "live-status", role: "status" }, liveStatus));
   return wrap;
