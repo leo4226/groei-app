@@ -36,7 +36,7 @@ from datetime import datetime, timezone
 from hashlib import sha256
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from auth import require_admin
@@ -148,6 +148,12 @@ class AdminUpdate(BaseModel):
     join_code: Optional[str] = None
 
 
+class PresentationUpdate(BaseModel):
+    join_code: str
+    # This is only the currently visible slide, never the full presentation.
+    slide: Optional[dict] = None
+
+
 class JoinBody(BaseModel):
     voter: str = Field(min_length=1, max_length=40)
 
@@ -166,9 +172,11 @@ async def _load_quiz(db) -> Optional[dict]:
     if not rows:
         return None
     row = rows[0]
+    stored = json.loads(row["config"])
     return {
         "join_code": row["join_code"],
-        "config": QuizConfig.model_validate(json.loads(row["config"])),
+        "config": QuizConfig.model_validate(stored),
+        "presentation": stored.get("_presentation"),
         "revealed": bool(row["revealed"]),
     }
 
@@ -346,6 +354,36 @@ async def admin_put(body: AdminUpdate, admin=Depends(require_admin), db=Depends(
     return await _admin_state(db)
 
 
+@router.put("/admin/presentation")
+async def admin_presentation(body: PresentationUpdate, admin=Depends(require_admin), db=Depends(db_dep)):
+    # Keep the current frame alongside the config so every API worker sees it.
+    # Config saves and invite rotations clear it by writing a fresh config.
+    raw = json.dumps(body.slide, ensure_ascii=False)
+    if len(raw.encode("utf-8")) > 24_000:
+        raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "config_too_large")
+    rows = await db.execute_fetchall(
+        "SELECT config FROM jaarquiz WHERE id = ? AND join_code = ?",
+        (QUIZ_ID, body.join_code),
+    )
+    if not rows:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "quiz_not_found")
+    previous = rows[0]["config"]
+    stored = json.loads(previous)
+    if body.slide is None:
+        stored.pop("_presentation", None)
+    else:
+        stored["_presentation"] = body.slide
+    # Compare against what we read so a concurrent config edit can't be lost.
+    updated = await db.execute_fetchall(
+        "UPDATE jaarquiz SET config = ? WHERE id = ? AND join_code = ? AND config = ? RETURNING id",
+        (json.dumps(stored, ensure_ascii=False), QUIZ_ID, body.join_code, previous),
+    )
+    if not updated:
+        raise HTTPException(status.HTTP_409_CONFLICT, "presentation_changed")
+    await db.commit()
+    return {"ok": True}
+
+
 @router.delete("/admin/responses/{voter}")
 async def admin_free_name(voter: str, admin=Depends(require_admin), db=Depends(db_dep)):
     await db.execute(
@@ -432,6 +470,13 @@ async def quiz_save(
     )
     await db.commit()
     return {"voter": me["voter"], "answers": answers, "done": done}
+
+
+@router.get("/{code}/presentation")
+async def quiz_presentation(code: str, response: Response, db=Depends(db_dep)):
+    quiz = await _quiz_by_code(db, code)
+    response.headers["Cache-Control"] = "no-store"
+    return {"slide": quiz["presentation"]}
 
 
 @router.get("/{code}/results")
