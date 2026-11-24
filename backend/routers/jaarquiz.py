@@ -156,6 +156,21 @@ class PresentationUpdate(BaseModel):
 
 class WaitingVisitor(BaseModel):
     visitor: str = Field(pattern=r"^[0-9a-f]{32}$")
+    x: float = Field(default=0.5, ge=0, le=1)
+    y: float = Field(default=0.5, ge=0, le=1)
+    vx: float = Field(default=0, ge=-4, le=4)
+    vy: float = Field(default=0, ge=-4, le=4)
+
+
+def _active_visitors(stored: dict) -> dict:
+    cutoff = int(datetime.now(timezone.utc).timestamp()) - 25
+    active = {}
+    for visitor, entry in stored.get("_waiting_visitors", {}).items():
+        if isinstance(entry, int):
+            entry = {"seen": entry, "x": 0.5, "y": 0.5, "vx": 0, "vy": 0}
+        if entry["seen"] > cutoff:
+            active[visitor] = entry
+    return active
 
 
 class JoinBody(BaseModel):
@@ -181,6 +196,7 @@ async def _load_quiz(db) -> Optional[dict]:
         "join_code": row["join_code"],
         "config": QuizConfig.model_validate(stored),
         "presentation": stored.get("_presentation"),
+        "waiting_visitors": _active_visitors(stored),
         "revealed": bool(row["revealed"]),
     }
 
@@ -495,13 +511,12 @@ async def waiting_room(code: str, body: WaitingVisitor, response: Response, db=D
         stored = json.loads(previous)
         if (stored.get("_presentation") or {}).get("type") != "intro":
             return {"visitors": []}
-        now = int(datetime.now(timezone.utc).timestamp())
-        visitors = {
-            visitor: seen for visitor, seen in stored.get("_waiting_visitors", {}).items()
-            if seen > now - 25
-        }
+        visitors = _active_visitors(stored)
         if body.visitor in visitors or len(visitors) < 40:
-            visitors[body.visitor] = now
+            visitors[body.visitor] = {
+                "seen": int(datetime.now(timezone.utc).timestamp()),
+                **body.model_dump(exclude={"visitor"}),
+            }
         stored["_waiting_visitors"] = visitors
         updated = await db.execute_fetchall(
             "UPDATE jaarquiz SET config = ? WHERE id = ? AND join_code = ? AND config = ? RETURNING id",
@@ -518,7 +533,10 @@ async def waiting_room(code: str, body: WaitingVisitor, response: Response, db=D
 async def quiz_presentation(code: str, response: Response, db=Depends(db_dep)):
     quiz = await _quiz_by_code(db, code)
     response.headers["Cache-Control"] = "no-store"
-    return {"slide": quiz["presentation"]}
+    slide = quiz["presentation"]
+    if slide and slide.get("type") == "intro":
+        return {"slide": slide, "circles": quiz["waiting_visitors"]}
+    return {"slide": slide}
 
 
 @router.get("/{code}/results")

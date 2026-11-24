@@ -208,3 +208,26 @@ async def test_live_presentation_is_invite_readable_and_admin_controlled(client,
     frame["slide"] = None
     assert (await client.put(control, json=frame, headers=admin_header)).status_code == 200
     assert (await client.get(path)).json() == {"slide": None}
+
+
+async def test_waiting_room_shares_positions_and_clears_them_when_quiz_starts(client, admin_header):
+    code = await _setup(client, admin_header)
+    path = f"/api/jaarquiz/{code}"
+    control = "/api/jaarquiz/admin/presentation"
+    first = {"visitor": "a" * 32, "x": 0.2, "y": 0.3, "vx": 1.2, "vy": -0.4}
+    second = {"visitor": "b" * 32, "x": 0.6, "y": 0.5}
+    assert (await client.post(f"{path}/waiting-room", json=first)).json() == {"visitors": []}
+    assert (await client.put(control, json={"join_code": code, "slide": {"type": "intro"}},
+                             headers=admin_header)).status_code == 200
+    for visitor in (first, second):
+        assert (await client.post(f"{path}/waiting-room", json=visitor)).status_code == 200
+    assert (await client.post(f"{path}/waiting-room", json={**first, "x": 2})).status_code == 422
+    room = (await client.get(f"{path}/presentation")).json()["circles"]
+    assert set(room) == {first["visitor"], second["visitor"]}
+    assert room[first["visitor"]]["vx"] == 1.2
+    assert room[second["visitor"]]["x"] == 0.6
+
+    for slide_type in ("q", "intro"):
+        assert (await client.put(control, json={"join_code": code, "slide": {"type": slide_type}},
+                                 headers=admin_header)).status_code == 200
+    assert (await client.get(f"{path}/presentation")).json()["circles"] == {}

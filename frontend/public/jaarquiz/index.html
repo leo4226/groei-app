@@ -176,9 +176,18 @@
     body.music-playing.present .music-dock{position:absolute}
   }
   body.present .show .bar{flex-wrap:wrap;gap:8px;flex-shrink:0}
-  .waiting-room{width:min(64vw,38dvh,340px);aspect-ratio:1;display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(5,1fr);align-items:center;justify-items:center;border:2px solid var(--accent);border-radius:12px;background:var(--panel);padding:8px}
-  .waiting-dot{width:55%;aspect-ratio:1;background:hsl(var(--hue) 85% 65%);border-radius:3px}
-  .waiting-dot.mine{outline:2px solid white;outline-offset:3px}
+  body.present:has(.waiting-arena){overflow:hidden}
+  body.present .wrap:has(.waiting-arena){padding:0;height:100dvh;min-height:0}
+  .waiting-screen{position:relative}
+  .waiting-arena{position:absolute;inset:0;overflow:hidden;touch-action:none;background:radial-gradient(ellipse at 40% 52%,#35236b,#14132a 78%);border:2px solid #a293d1}
+  .waiting-circle{position:absolute;left:0;top:0;width:34px;height:34px;border-radius:50%;background:hsl(var(--hue) 85% 65%);box-shadow:0 0 14px #0007;pointer-events:none}
+  .waiting-circle.mine{outline:2px solid white;outline-offset:3px;pointer-events:auto;cursor:grab}
+  .waiting-circle.mine:active{cursor:grabbing}
+  .waiting-heading{position:absolute;left:12px;top:12px;max-width:min(55vw,360px);z-index:1;pointer-events:none;text-shadow:0 2px 8px #000}
+  .waiting-heading h1{font-size:clamp(20px,4vw,36px)}
+  .waiting-screen .bar,.waiting-screen [role=status]{position:absolute;left:12px;bottom:16px;z-index:2}
+  .waiting-screen [role=status]{bottom:48px}
+  body.music-playing:has(.waiting-arena) .music-dock{position:fixed}
   .show .bonus-winner{color:var(--accent)}
   .bonus-preview{width:min(92vw,1000px);max-height:92dvh;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:18px}
   .bonus-preview::backdrop{background:#000b}
@@ -344,7 +353,128 @@ const CODE = ADMIN ? "" : LIVE ? hash.slice(5) : hash;
 const inviteLink = code => location.origin + "/jaarquiz#" + encodeURIComponent(code);
 const KEY = "jaarquiz:" + CODE;
 const visitorId = Array.from(crypto.getRandomValues(new Uint8Array(16)), x => x.toString(16).padStart(2,"0")).join("");
-let visitors = [], nextHeartbeat = 0, hostMusic = false, listenerMusic = false, publicFrame = null;
+let hostMusic = false, listenerMusic = false, publicFrame = null;
+const arena = el("div", { class: "waiting-arena", "aria-label": "Interactieve wachtkamer" });
+const circles = new Map();
+const radius = 17, diameter = radius * 2, bounce = .88;
+const limit = (v, min, max) => Math.max(min, Math.min(max, v));
+let nextHeartbeat = 0, roomFrame = 0, lastFrame = 0, drag = null;
+
+function roomCircle(id, state){
+  const own = id === visitorId;
+  const node = el("span", {
+    class: "waiting-circle" + (own ? " mine" : ""),
+    style: `--hue:${parseInt(id.slice(0,4),16) % 360}`, "aria-hidden": "true",
+  });
+  const circle = { id, node, ...state };
+  circles.set(id, circle);
+  arena.append(node);
+  return circle;
+}
+function reconcileCircles(snapshot){
+  for (const [id, circle] of circles){
+    if (id === visitorId || Object.hasOwn(snapshot, id)) continue;
+    circle.node.remove();
+    circles.delete(id);
+  }
+  for (const [id, state] of Object.entries(snapshot)){
+    if (id === visitorId) continue;
+    const circle = circles.get(id) || roomCircle(id, state);
+    const signature = `${state.x},${state.y},${state.vx},${state.vy}`;
+    if (circle.signature !== signature){
+      Object.assign(circle, state, { signature });
+    }
+  }
+  const count = document.querySelector(".waiting-count");
+  if (count) count.textContent = `${circles.size} in de wachtkamer`;
+}
+function bounceWalls(c, width, height){
+  if ((c.x < radius / width && c.vx < 0) || (c.x > 1 - radius / width && c.vx > 0)) c.vx *= -bounce;
+  if ((c.y < radius / height && c.vy < 0) || (c.y > 1 - radius / height && c.vy > 0)) c.vy *= -bounce;
+  c.x = limit(c.x, radius / width, 1 - radius / width);
+  c.y = limit(c.y, radius / height, 1 - radius / height);
+}
+function collideCircles(a, b, width, height){
+  const dx = (b.x - a.x) * width, dy = (b.y - a.y) * height;
+  const distance = Math.hypot(dx, dy);
+  if (distance >= diameter) return;
+  const nx = distance ? dx / distance : 1, ny = distance ? dy / distance : 0;
+  const fixedA = drag && a.id === visitorId, fixedB = drag && b.id === visitorId;
+  const wa = fixedA ? 0 : fixedB ? 1 : .5, wb = 1 - wa;
+  const overlap = diameter - distance;
+  a.x -= overlap * nx * wa / width; a.y -= overlap * ny * wa / height;
+  b.x += overlap * nx * wb / width; b.y += overlap * ny * wb / height;
+  const closing = (a.vx - b.vx) * width * nx + (a.vy - b.vy) * height * ny;
+  if (closing <= 0) return;
+  const impulse = (1 + bounce) * closing;
+  a.vx -= impulse * nx * wa / width; a.vy -= impulse * ny * wa / height;
+  b.vx += impulse * nx * wb / width; b.vy += impulse * ny * wb / height;
+}
+function tickRoom(now){
+  roomFrame = 0;
+  if (!arena.isConnected){ lastFrame = 0; return; }
+  const dt = Math.min(.025, (now - (lastFrame || now)) / 1000);
+  lastFrame = now;
+  const width = arena.clientWidth, height = arena.clientHeight;
+  if (width > diameter && height > diameter){
+    const bodies = [...circles.values()];
+    const damp = Math.pow(.60, dt);
+    for (const c of bodies){
+      if (drag && c.id === visitorId) continue;
+      c.x += c.vx * dt; c.y += c.vy * dt;
+      c.vx *= damp; c.vy *= damp;
+    }
+    for (let i = 0; i < bodies.length; i++){
+      const c = bodies[i];
+      for (let j = i + 1; j < bodies.length; j++) collideCircles(c, bodies[j], width, height);
+    }
+    for (const c of bodies){
+      if (!(drag && c.id === visitorId)) bounceWalls(c, width, height);
+      c.node.style.transform = `translate(${c.x * width - radius}px,${c.y * height - radius}px)`;
+    }
+  }
+  roomFrame = requestAnimationFrame(tickRoom);
+}
+arena.addEventListener("pointerdown", e => {
+  const c = circles.get(visitorId);
+  if (drag || e.target !== c?.node || e.button !== 0) return;
+  const rect = arena.getBoundingClientRect();
+  drag = { id: e.pointerId, left: rect.left + arena.clientLeft, top: rect.top + arena.clientTop,
+    offsetX: e.clientX - rect.left - arena.clientLeft - c.x * arena.clientWidth,
+    offsetY: e.clientY - rect.top - arena.clientTop - c.y * arena.clientHeight,
+    time: performance.now() };
+  c.vx = c.vy = 0;
+  arena.setPointerCapture(e.pointerId);
+});
+arena.addEventListener("pointermove", e => {
+  if (e.pointerId !== drag?.id) return;
+  const c = circles.get(visitorId), width = arena.clientWidth, height = arena.clientHeight;
+  if (width <= diameter || height <= diameter) return;
+  const x = limit((e.clientX - drag.left - drag.offsetX) / width, radius / width, 1 - radius / width);
+  const y = limit((e.clientY - drag.top - drag.offsetY) / height, radius / height, 1 - radius / height);
+  const now = performance.now(), dt = Math.max(.012, (now - drag.time) / 1000);
+  c.vx = limit(.25 * c.vx + .75 * (x - c.x) / dt, -3, 3);
+  c.vy = limit(.25 * c.vy + .75 * (y - c.y) / dt, -3, 3);
+  c.x = x; c.y = y; drag.time = now;
+});
+function releaseCircle(e){
+  if (e.pointerId !== drag?.id) return;
+  const c = circles.get(visitorId);
+  if (e.type !== "pointerup" || performance.now() - drag.time > 90) c.vx = c.vy = 0;
+  drag = null;
+  nextHeartbeat = 0;
+}
+for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) arena.addEventListener(type, releaseCircle);
+function waitingFrame(title){
+  if (!circles.has(visitorId)){
+    roomCircle(visitorId, { x: .18 + Math.random() * .64, y: .25 + Math.random() * .5, vx: 0, vy: 0 });
+  }
+  if (!roomFrame) roomFrame = requestAnimationFrame(tickRoom);
+  return el("div", { class: "show watching waiting-screen" }, arena,
+    el("div", { class: "waiting-heading" }, el("h1", {}, title || "Jaarquiz"),
+      el("p", { class: "waiting-count" }, `${circles.size} in de wachtkamer`),
+      el("p", {}, "Sleep je cirkel met de witte rand en laat los om te gooien.")));
+}
 const musicDock = el("div", { class: "music-dock", hidden: true });
 document.body.append(musicDock);
 function syncMusic(){
@@ -768,13 +898,22 @@ function pokemonSound(play = false){
   if (pokemonCue.currentTime) pokemonCue.currentTime = 0;
   if (play) pokemonCue.play().catch(() => {});
 }
-function sayBonusName(name){
-  if (!name || !("speechSynthesis" in window)) return;
+function sayBonusName(name, after){
+  if (!name || !("speechSynthesis" in window)){ after(); return; }
   const line = new SpeechSynthesisUtterance("It’s " + name + "!");
   line.lang = "en-US";
   line.pitch = 1.25;
   line.rate = 1.04;
   speechSynthesis.cancel();
+  let finished = false;
+  const done = () => {
+    if (finished) return;
+    finished = true;
+    clearTimeout(fallback);
+    after();
+  };
+  const fallback = setTimeout(done, 2200);
+  line.onend = line.onerror = done;
   speechSynthesis.speak(line);
 }
 function previewBonus(bonus){
@@ -786,7 +925,7 @@ function previewBonus(bonus){
       const answer = silhouetteShown;
       content.replaceChildren(renderFrame({ type: answer ? "bonusWinner" : "bonusSilhouette", bonus }, false));
       pokemonSound(!answer);
-      if (answer) sayBonusName(bonus.name);
+      if (answer) sayBonusName(bonus.name, () => { if (dialog.open) confetti(4500, ["🎆", "🎇", "💥", "✨", ...BONUS_EMOJI], true); });
       silhouetteShown = true;
       reveal.textContent = "Onthul";
       reveal.disabled = answer;
@@ -958,23 +1097,27 @@ async function stopPresentation(){
 }
 async function pollLive(){
   try{
-    const { slide } = await api("GET", `/${encodeURIComponent(CODE)}/presentation`);
-    let roomChanged = false;
-    if (slide?.type === "intro" && Date.now() >= nextHeartbeat){
-      nextHeartbeat = Date.now() + 5500;
-      try{
-        const room = await api("POST", `/${encodeURIComponent(CODE)}/waiting-room`, { visitor: visitorId });
-        roomChanged = JSON.stringify(visitors) !== JSON.stringify(room.visitors);
-        visitors = room.visitors;
-      }catch(e){ /* Keep the last roster until the next heartbeat. */ }
-    } else if (slide?.type !== "intro"){
-      visitors = [];
-      nextHeartbeat = 0;
-    }
-    if (roomChanged || liveStatus || JSON.stringify(slide) !== JSON.stringify(liveSlide)){
+    const { slide, circles: snapshot = {} } = await api("GET", `/${encodeURIComponent(CODE)}/presentation`);
+    if (liveStatus || JSON.stringify(slide) !== JSON.stringify(liveSlide)){
       liveStatus = "";
       liveSlide = slide;
       render();
+    }
+    if (slide?.type === "intro"){
+      reconcileCircles(snapshot);
+      const own = circles.get(visitorId);
+      if (own && Date.now() >= nextHeartbeat){
+        const moving = drag || Math.hypot(own.vx, own.vy) > .035;
+        nextHeartbeat = Date.now() + (moving ? 850 : 4200);
+        const { x, y, vx, vy } = own;
+        try{
+          await api("POST", `/${encodeURIComponent(CODE)}/waiting-room`, {
+            visitor: visitorId, x, y, vx: limit(vx, -4, 4), vy: limit(vy, -4, 4),
+          });
+        }catch(e){ /* Retry on the next heartbeat. */ }
+      }
+    } else if (circles.size){
+      circles.clear(); arena.replaceChildren(); drag = null; nextHeartbeat = 0;
     }
   }catch(e){
     if (LIVE || liveSlide){
@@ -984,7 +1127,7 @@ async function pollLive(){
     }
     if (e.code === "quiz_not_found") return;
   }
-  setTimeout(pollLive, LIVE || liveSlide ? 1500 : 4000);
+  setTimeout(pollLive, liveSlide?.type === "intro" ? 850 : LIVE || liveSlide ? 1500 : 4000);
 }
 function step(dir){
   if (drumming) return;
@@ -1014,7 +1157,11 @@ function step(dir){
     return;
   }
   si = nextI; showFrame();
-  if (dir > 0 && s2.type === "bonusWinner" && s2.bonus.pokemon) sayBonusName(s2.bonus.name);
+  if (dir > 0 && s2.type === "bonusWinner" && s2.bonus.pokemon){
+    sayBonusName(s2.bonus.name, () => {
+      if (view === "present" && slides[si] === s2) confetti(4500, ["🎆", "🎇", "💥", "✨", ...BONUS_EMOJI], true);
+    });
+  }
   if (dir > 0 && s2.type === "q" && s2.shown) confetti(2300, PODIUM_EMOJI[s2.res.rows.length - s2.shown]);
   if (dir > 0 && s2.type === "end") confetti(6000);
 }
@@ -1037,7 +1184,7 @@ function vPresent(){
 }
 function vLive(){
   if (liveSlide){
-    const frame = renderFrame(liveSlide, false);
+    const frame = liveSlide.type === "intro" ? waitingFrame(liveSlide.title) : renderFrame(liveSlide, false);
     if (liveSlide.music) frame.append(el("div", { class: "bar" },
       el("button", { onclick: () => { listenerMusic = !listenerMusic; render(); } },
         listenerMusic ? "Geluid uit" : "Geluid aan")));
@@ -1077,12 +1224,6 @@ function renderFrame(sl, host){
       el("div", { class: "big" }, "🎬🥁🍿"),
       el("h1", {}, sl.title || "Jaarquiz ✨🤖"),
       el("p", {}, `${sl.participants} jaargenoten hebben gestemd 🗳️💯 · ${sl.total} vragen 🧠`),
-      host ? null : el("div", { class: "waiting-room", "aria-label": `${visitors.length} aanwezigen` },
-        ...visitors.map(id => el("span", {
-          class: "waiting-dot" + (id === visitorId ? " mine" : ""),
-          style: `--hue:${parseInt(id.slice(0,4),16) % 360}`, "aria-hidden": "true",
-        }))),
-      host ? null : el("p", {}, `${visitors.length} in de wachtkamer · jij hebt een witte rand`),
       el("p", {}, host ? "De wachtkamer is open. Tik op Verder om te beginnen." : "De presentator bepaalt wanneer we verdergaan.")));
   } else if (sl.type === "q"){
     const ol = el("ol", {});
