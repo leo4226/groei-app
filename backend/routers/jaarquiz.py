@@ -498,9 +498,18 @@ async def quiz_save(
 
 
 @router.post("/{code}/waiting-room")
-async def waiting_room(code: str, body: WaitingVisitor, response: Response, db=Depends(db_dep)):
+async def waiting_room(code: str, body: WaitingVisitor, response: Response,
+                       x_quiz_token: Optional[str] = Header(default=None), db=Depends(db_dep)):
     """Anonymous, expiring tab presence shared by all API workers."""
     await _quiz_by_code(db, code)
+    voter = None
+    if x_quiz_token:
+        rows = await db.execute_fetchall(
+            "SELECT voter FROM jaarquiz_responses WHERE quiz_id = ? AND token_hash = ?",
+            (QUIZ_ID, _hash(x_quiz_token)),
+        )
+        if rows:
+            voter = rows[0]["voter"]
     response.headers["Cache-Control"] = "no-store"
     for _ in range(3):
         rows = await db.execute_fetchall(
@@ -520,6 +529,8 @@ async def waiting_room(code: str, body: WaitingVisitor, response: Response, db=D
             visitors[body.visitor] = {
                 "seen": int(now),
                 "out_until": out_until,
+                "voter": voter,
+                "streak": (previous_visitor or {}).get("streak", 0),
                 **body.model_dump(exclude={"visitor", "hit"}),
             }
             victim = visitors.get(body.hit) if body.hit != body.visitor else None
@@ -528,7 +539,8 @@ async def waiting_room(code: str, body: WaitingVisitor, response: Response, db=D
                 and abs(body.x - victim["x"]) <= 0.19
                 and abs(body.y - victim["y"]) <= 0.16
             ):
-                victim.update(out_until=now + 5, vx=0, vy=0)
+                victim.update(out_until=now + 5, vx=0, vy=0, streak=0)
+                visitors[body.visitor]["streak"] += 1
         stored["_waiting_visitors"] = visitors
         updated = await db.execute_fetchall(
             "UPDATE jaarquiz SET config = ? WHERE id = ? AND join_code = ? AND config = ? RETURNING id",
