@@ -9,6 +9,8 @@ SCHEMA = """
         id INTEGER PRIMARY KEY,
         join_code TEXT NOT NULL UNIQUE,
         config TEXT NOT NULL,
+        live_state TEXT NOT NULL DEFAULT '{}',
+        live_photo TEXT,
         revealed BOOLEAN NOT NULL DEFAULT 0,
         created_at TIMESTAMP,
         updated_at TIMESTAMP
@@ -131,16 +133,17 @@ async def test_reveal_serves_aggregates_and_closes_editing(client, admin_header)
     ann = await _join(client, code, "Ann")
     bob = await _join(client, code, "Bob")
     await client.put(f"/api/jaarquiz/{code}/me", headers=ann,
-                     json={"answers": {"weird": ["Bob", "Ann", "Cas"]}})
+                     json={"answers": {"weird": ["Bob", "Ann", "Cas"], "others": ["X", "Y"]}, "done": True})
     await client.put(f"/api/jaarquiz/{code}/me", headers=bob,
-                     json={"answers": {"weird": ["Bob", "Cas", "Ann"]}})
+                     json={"answers": {"weird": ["Bob", "Cas", "Ann"], "others": ["X", "Y"]}, "done": True})
 
     await client.put("/api/jaarquiz/admin", headers=admin_header,
                      json={"config": CONFIG, "revealed": True})
     res = (await client.get(f"/api/jaarquiz/{code}/results")).json()
     weird = next(q for q in res["questions"] if q["id"] == "weird")
-    assert [row["name"] for row in weird["rows"]] == ["Bob", "Ann", "Cas"]  # Ann and Cas tie on 2.5: name breaks it
-    assert weird["rows"][0] == {"name": "Bob", "avg": 1.0, "min": 1, "max": 1}
+    assert [row["name"] for row in weird["rows"]] == ["Bob", "Ann", "Cas"]
+    assert weird["rows"][0] == {"name": "Bob", "avg": 1.0, "min": 1, "max": 1, "rank": 1}
+    assert [row["rank"] for row in weird["rows"]] == [1, 2, 2]
     assert "answers" not in str(res)
 
     closed = await client.put(f"/api/jaarquiz/{code}/me", headers=ann,
@@ -264,3 +267,28 @@ async def test_waiting_room_knockout_lasts_five_seconds(client, admin_header):
     room = await circles()
     assert room[attacker]["out_until"] == 0
     assert room[victim]["out_until"] == deadline
+
+
+@pytest.mark.asyncio
+async def test_settings_preserve_live_frame_and_rotation_expires_media(client, admin_header):
+    code = await _setup(client, admin_header)
+    photo = "data:image/jpeg;base64,YQ=="
+    frame = {"type": "guestBonus", "photoId": "test"}
+    await client.put("/api/jaarquiz/admin/presentation", headers=admin_header,
+                     json={"join_code": code, "slide": frame, "photo": photo})
+    await client.put("/api/jaarquiz/admin", headers=admin_header, json={"config": CONFIG, "revealed": True})
+    assert (await client.get(f"/api/jaarquiz/{code}/presentation")).json() == {"slide": frame}
+    assert (await client.get(f"/api/jaarquiz/{code}/photo/test")).json() == {"photo": photo}
+    assert (await client.get(f"/api/jaarquiz/{code}/photo/other")).status_code == 404
+    await client.put("/api/jaarquiz/admin", headers=admin_header, json={"config": CONFIG, "join_code": "new"})
+    assert (await client.get(f"/api/jaarquiz/{code}/photo/test")).status_code == 404
+
+
+def test_unsubmitted_ballots_do_not_break_a_bronze_tie():
+    names = ["A", "B", "C", "D"]
+    config = QuizConfig.model_validate({**CONFIG, "people": [{"name": n} for n in names], "liar": None})
+    ballots = [{"voter": n, "done": i < 2, "answers": {"weird": order}}
+               for i, (n, order) in enumerate(zip(names, [names, ["A","B","D","C"], names]))]
+    result = compute_results(config, ballots)
+    assert result["participants"] == 2
+    assert [r["rank"] for r in result["questions"][0]["rows"]] == [1, 2, 3, 3]

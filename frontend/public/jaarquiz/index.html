@@ -186,7 +186,14 @@
   .btn.launch{background:#178044;color:white;border:2px solid #60e593}
   .waiting-circle.mine:active{cursor:grabbing}
   .waiting-circle{transition:opacity .32s ease}
-  .waiting-circle.out{opacity:0;pointer-events:none}
+  .waiting-circle.out{opacity:.65;pointer-events:none;border:2px dashed white;background:#292638!important}
+  .waiting-circle.out img{opacity:0}
+  .waiting-circle.out::after{position:absolute;inset:0;display:grid;place-items:center;content:attr(data-count);color:white;font-weight:800}
+  .waiting-circle.leader::before{content:"👑";position:absolute;top:-1.2em;animation:crown-in .3s ease-out}
+  @keyframes crown-in{from{transform:translateY(-12px);opacity:0}}
+  .show ol li.new .av{outline:3px solid gold}
+  .show ol li{flex-wrap:wrap}
+  .show ol{overflow-y:auto}
   .waiting-screen .bar{right:12px;display:flex;flex-wrap:wrap;background:#17152ce8;padding:8px}
   @media(prefers-reduced-motion:reduce){.waiting-circle{transition:none}}
   .waiting-heading{position:absolute;left:12px;top:12px;max-width:min(55vw,360px);z-index:1;pointer-events:none;text-shadow:0 2px 8px #000}
@@ -297,6 +304,7 @@ const SLOP = ["✨", "🚀", "💯", "🔥", "🤖", "🧠", "🙌", "🫶", "�
 const PODIUM_EMOJI = [["👑","🔥","🦍","🚀"], ["🪩","🦖","🧀","🕺"], ["🐸","🦆","🧃","🍌"]];
 const BONUS_EMOJI = ["👶","🍼","🧸","🎆","🎇","🐣","🎊","💥"];
 let confettiFrame;
+const emojiTiles = new Map();
 function confetti(ms = 3800, emojis = SLOP, fireworks = false){
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   cancelAnimationFrame(confettiFrame);
@@ -306,11 +314,13 @@ function confetti(ms = 3800, emojis = SLOP, fireworks = false){
   const colors = ["#ffcc4d", "#ff6f91", "#5ee6a8", "#7aa2ff", "#c792ea"];
   const n = innerWidth < 700 ? (fireworks ? 64 : 40) : (fireworks ? 112 : 72);
   const sprites = emojis.map(emoji => {
+    if (emojiTiles.has(emoji)) return emojiTiles.get(emoji);
     const tile = document.createElement("canvas");
     tile.width = tile.height = 48;
     const pen = tile.getContext("2d");
     pen.font = "34px system-ui"; pen.textAlign = "center"; pen.textBaseline = "middle";
     pen.fillText(emoji, 24, 24);
+    emojiTiles.set(emoji, tile);
     return tile;
   });
   const parts = Array.from({ length: n }, () => ({
@@ -472,9 +482,16 @@ function tickRoom(now){
   lastFrame = now;
   const width = arena.clientWidth, height = arena.clientHeight;
   if (width > diameter && height > diameter){
+    let leader = null;
+    for (const c of circles.values()){
+      if (!isOut(c) && c.streak && (!leader || c.streak > leader.streak || (c.streak === leader.streak && c.id < leader.id))) leader = c;
+    }
     const bodies = [...circles.values()].filter(c => {
       const out = isOut(c);
       c.node.classList.toggle("out", out);
+      c.node.classList.toggle("leader", c === leader);
+      const count = out ? String(Math.ceil(c.out_until-Date.now()/1000)) : "";
+      if (c.node.dataset.count !== count) c.node.dataset.count = count;
       if (out && !c.wasOut){
         c.vx = c.vy = 0;
         if (c.id === visitorId){
@@ -483,7 +500,7 @@ function tickRoom(now){
         }
       }
       if (!out && c.wasOut && (c.id === visitorId || rehearsal)){
-        c.x = .18 + Math.random() * .64; c.y = .25 + Math.random() * .5;
+        // Return at the location marked by the countdown.
         nextHeartbeat = 0;
       }
       c.wasOut = out;
@@ -780,11 +797,14 @@ function vQuestion(){
 
   const last = qi === quiz.questions.length - 1;
   const next = async dir => {
+    if (busy) return;
     sync();
     const cur = drafts[q.id];
     if (dir > 0 && liar && !liarDone && cur[cur.length - 1] === liar){ markLiar(); showLiar(); return; }
     const answers = { ...mine.answers, [q.id]: cur.slice() };
     busy = true; errorMsg = "";
+    list.closest(".qview").querySelectorAll("button").forEach(button => button.disabled = true);
+    toast("Je keuze wordt vastgelegd. Zeer officieel.");
     try{
       mine = await api("PUT", `/${encodeURIComponent(CODE)}/me`, { answers, done: dir > 0 && last }, { "X-Quiz-Token": session.token });
     }catch(e){
@@ -792,7 +812,6 @@ function vQuestion(){
       if (e.code === "token_invalid"){ store(KEY, null); session = null; mine = null; view = "intro"; }
       render(); return;
     }
-    busy = false;
     const half = Math.ceil(quiz.questions.length / 2) - 1;
     if (dir > 0 && qi === half && once("analyse"))
       await fakeLoading("AI analyseert je antwoorden… 🤖✨", 2600, "Resultaat: 87% match met Quint 🧠✨");
@@ -801,6 +820,7 @@ function vQuestion(){
       if (mine.done){ view = "done"; setTimeout(() => confetti(), 50); }
       else { qi = firstOpen(); errorMsg = "Je hebt nog niet alle vragen ingevuld."; }
     } else qi = Math.max(0, Math.min(quiz.questions.length - 1, qi + dir));
+    busy = false;
     render(); window.scrollTo({ top: 0, behavior: "smooth" });
   };
   return el("div", { class: "qview" },
@@ -813,10 +833,7 @@ function vQuestion(){
     (() => {
       const prevBtn = (cls) => el("button", { class: cls, disabled: qi === 0 || busy, onclick: () => next(-1) }, "⬅️ Vorige");
       const nextBtn = (cls) => el("button", { class: cls, disabled: busy, onclick: () => next(1) }, last ? "Insturen 🚀🎉💯" : "Volgende ➡️✨");
-      // From the second half on the buttons swap places and colours. Pesten.
-      return qi >= Math.ceil(quiz.questions.length / 2)
-        ? el("div", { class: "row" }, nextBtn("btn ghost"), prevBtn("btn"))
-        : el("div", { class: "row" }, prevBtn("btn ghost"), nextBtn("btn"));
+      return el("div", { class: "row" }, prevBtn("btn ghost"), nextBtn("btn"));
     })());
 }
 
@@ -843,7 +860,7 @@ function resultsView(R, questions){
     const n = Math.max(res.rows.length, 1);
     const ul = el("ul", { class: "res" });
     res.rows.forEach((r, j) => ul.append(el("li", {},
-      el("span", { class: "pos" }, j + 1),
+      el("span", { class: "pos" }, r.rank ?? j + 1),
       el("div", { class: "barwrap" },
         el("div", { class: "bar", style: `width:${Math.max(6, (n + 1 - r.avg) / n * 100)}%` }),
         el("div", { class: "who" }, av(r.name), el("span", {}, r.name))),
@@ -994,8 +1011,8 @@ function sayBonusName(name, after){
   if (!name || !("speechSynthesis" in window)){ after(); return; }
   const line = new SpeechSynthesisUtterance("It’s " + name + "!");
   line.lang = "en-US";
-  line.pitch = 1.25;
-  line.rate = 1.04;
+  line.pitch = .90;
+  line.rate = .96;
   speechSynthesis.cancel();
   let finished = false;
   const done = () => {
@@ -1104,7 +1121,7 @@ function vAdmin(){
 let slides = [], si = 0, drumming = false, bonusFrame = null;
 let presentationResults;
 function startRehearsal(){
-  rehearsal = true;
+  guestPreview = false; rehearsalPublic = null; rehearsal = true;
   si = 0; bonusFrame = null; hostMusic = true;
   buildSlides();
   view = "present";
@@ -1119,8 +1136,8 @@ function buildSlides(){
   const Q = admin.config.questions;
   const R = rehearsal ? {
     participants: 3,
-    questions: Q.map(q => ({ id: q.id, rows: ["Voorbeeld A", "Voorbeeld B", "Voorbeeld C"].map((name, i) =>
-      ({ name, avg: 1.2 + i * .8, min: 1, max: i + 1 })) })),
+    questions: Q.map(q => ({ id: q.id, rows: shuffle(q.options || admin.config.people.map(p => p.name)).slice(0, 3).map((name, i) =>
+      ({ name, rank: i + 1, avg: 1.2 + i * .8, min: 1, max: i + 1 })) })),
     self_knowledge: [{name:"Voorbeeld A",off_by:.4},{name:"Voorbeeld C",off_by:1.7}],
   } : admin.results;
   presentationResults = R;
@@ -1131,8 +1148,9 @@ function buildSlides(){
   Q.forEach((q, i) => {
     const res = R.questions.find(row => row.id === q.id);
     if (res?.rows.length){
-      const podium = { rows: res.rows.slice(0, 3) };
-      for (let k = 0; k <= podium.rows.length; k++) slides.push({ type: "q", res: podium, q, shown: k });
+      const rows = res.rows.map((r,i) => ({...r, rank:r.rank ?? i+1})).filter(r => r.rank <= 3);
+      const podium = { rows, ranks:[...new Set(rows.map(r => r.rank))] };
+      for (let k = 0; k <= podium.ranks.length; k++) slides.push({ type: "q", res: podium, q, shown: k });
     }
     if (bonus?.after === i + 1 && (bonus.photo || bonus.pokemon)){
       slides.push({ type: "bonus", bonus });
@@ -1141,17 +1159,28 @@ function buildSlides(){
     }
   });
   const own = R.questions.filter(r => !(Q.find(q => q.id === r.id) || {}).options);
-  const count = (pick) => { const c = {}; own.forEach(r => { const row = pick(r.rows); if (row) c[row.name] = (c[row.name] || 0) + 1; }); return Object.entries(c).sort((a, b) => b[1] - a[1])[0]; };
-  const first = count(rows => rows[0]), lastc = count(rows => rows[rows.length - 1]);
-  let split = null;
-  R.questions.forEach(r => r.rows.forEach(row => { const d = row.max - row.min; if (!split || d > split.d) split = { d, row, q: Q.find(q => q.id === r.id) }; }));
+  function mostOften(last){
+    const counts = new Map();
+    for (const {rows} of own){
+      if (!rows.length) continue;
+      const target = rows[last ? rows.length-1 : 0];
+      for (const row of rows.filter(r => (r.rank ?? r.avg) === (target.rank ?? target.avg)))
+        counts.set(row.name,(counts.get(row.name)||0)+1);
+    }
+    const max = Math.max(...counts.values());
+    return counts.size ? [[...counts.keys()].filter(n => counts.get(n)===max).join(" & "),max] : null;
+  }
+  const first = mostOften(false), lastc = mostOften(true);
+  const spreads = R.questions.flatMap(q => q.rows.map(r => ({name:r.name, spread:r.max-r.min})));
+  const widest = Math.max(...spreads.map(r => r.spread));
+  const divided = [...new Set(spreads.filter(r => r.spread === widest).map(r => r.name))];
   const sk = R.self_knowledge;
   const awards = [];
   if (first) awards.push({ e: "🏆👑", t: "Vaakst op #1", name: first[0], what: `${first[1]}× bovenaan` });
   if (lastc) awards.push({ e: "🧊🫠", t: "Vaakst onderaan", name: lastc[0], what: `${lastc[1]}× op de laatste plek` });
-  if (split) awards.push({ e: "🔥🤯", t: "Meeste ruzie", name: split.row.name, what: `van #${split.row.min} tot #${split.row.max} bij "${split.q ? split.q.text : ""}"` });
-  if (sk.length) awards.push({ e: "🪞🧘", t: "Kent zichzelf het best", name: sk[0].name, what: `${sk[0].off_by.toFixed(1)} plekken ernaast` });
-  if (sk.length > 1) awards.push({ e: "🤡🌈", t: "Leeft in een droomwereld", name: sk[sk.length - 1].name, what: `${sk[sk.length - 1].off_by.toFixed(1)} plekken ernaast` });
+  if (divided.length) awards.push({ e: "🔥🤯", t: "Meeste ruzie", name: divided.join(" & "), what: `${widest} plekken verschil` });
+  if (sk.length) awards.push({ e: "🪞🧘", t: "Kent zichzelf het best", name: sk.filter(x => x.off_by === sk[0].off_by).map(x=>x.name).join(" & "), what: `${sk[0].off_by.toFixed(1)} plekken ernaast` });
+  if (sk.length > 1) awards.push({ e: "🤡🌈", t: "Leeft in een droomwereld", name: sk.filter(x=>x.off_by === sk.at(-1).off_by).map(x=>x.name).join(" & "), what: `${sk[sk.length - 1].off_by.toFixed(1)} plekken ernaast` });
   for (let k = 0; k <= awards.length; k++) slides.push({ type: "awards", awards, shown: k });
   slides.push({ type: "end" });
 }
@@ -1170,23 +1199,23 @@ function currentFrame(){
   if (sl.type === "q") return {
     type: "q", text: sl.q.text, top: sl.q.top, number: quiz.questions.indexOf(sl.q) + 1,
     total: quiz.questions.length, drumming,
-    rows: sl.res.rows.map((row, i, rows) =>
-      i >= rows.length - sl.shown && !(i === 0 && drumming) ? { name: row.name } : null),
+    rows: sl.res.ranks.map((rank,i,ranks) => i >= ranks.length - sl.shown ? {rank, names:sl.res.rows.filter(r => r.rank === rank).map(r => r.name)} : null),
+    ranks:sl.res.ranks,
   };
   if (sl.type === "awards") return {
     type: "awards", awards: sl.awards.map((award, i) => i < sl.shown ? award : null),
   };
   return { type: "end" };
 }
-function publish(slide){
+function publish(slide, photo = null){
   if (rehearsal) return Promise.resolve(true);
   // Only ordinary presentation frames may leave the presenter browser.
-  if (slide && !["intro", "q", "awards", "end"].includes(slide.type)) return Promise.resolve(true);
-  publicFrame = slide;
+  if (slide && !["intro", "q", "awards", "end", "guestBonus"].includes(slide.type)) return Promise.resolve(true);
   const payload = slide && { ...slide, music: hostMusic, fadeEnd };
   publishQueue = publishQueue.then(async () => {
     try{
-      await api("PUT", "/admin/presentation", { join_code: admin.join_code, slide: payload }, adminHeaders());
+      await api("PUT", "/admin/presentation", { join_code: admin.join_code, slide: payload, photo }, adminHeaders());
+      publicFrame = slide; publicPhoto = photo;
       liveStatus = "";
       return true;
     }catch(e){
@@ -1200,8 +1229,10 @@ function publish(slide){
   return publishQueue;
 }
 function showFrame(){
+  const frame = currentFrame();
+  if (rehearsal && !frame.bonus) rehearsalPublic = frame;
   render();
-  publish(currentFrame());
+  return publish(frame);
 }
 async function stopPresentation(){
   if (drumming || view !== "present") return;
@@ -1221,8 +1252,21 @@ async function pollLive(){
     const { slide, circles: snapshot = {} } = await api("GET", `/${encodeURIComponent(CODE)}/presentation`);
     if (liveStatus || JSON.stringify(slide) !== JSON.stringify(liveSlide)){
       liveStatus = "";
+      const previous = liveSlide;
+      receivedPhoto = slide?.photoId ? (await api("GET", `/${encodeURIComponent(CODE)}/photo/${slide.photoId}`)).photo : null;
       liveSlide = slide;
       render();
+      if (slide?.type === "q"){
+        const visible = slide.rows.findIndex(Boolean);
+        if (visible >= 0 && (previous?.number !== slide.number || previous?.rows?.findIndex(Boolean) !== visible)){
+          const place = (slide.rows[visible].rank || visible+1)-1;
+          confetti(place ? 1650 : 3000,PODIUM_EMOJI[place],!place);
+        }
+      }
+      if (slide?.type === "guestBonus" && slide.answer && slide.photoId !== previous?.photoId){
+        if (listenerMusic) sayBonusName(slide.title, () => confetti(3200,BONUS_EMOJI,true));
+        else confetti(3200,BONUS_EMOJI,true);
+      }
     }
     if (slide?.type === "intro"){
       reconcileCircles(snapshot);
@@ -1245,15 +1289,23 @@ async function pollLive(){
   }
   setTimeout(pollLive, liveSlide?.type === "intro" ? 850 : LIVE || liveSlide ? 1500 : 4000);
 }
-let podiumTimer = null;
+let podiumTimer = null, podiumGeneration = 0, pendingPodium = false, retryIndex = null;
 function cancelPodium(){
+  podiumGeneration++; pendingPodium = false; retryIndex = null;
   clearTimeout(podiumTimer);
   podiumTimer = null;
 }
-function revealPodium(index){
+async function revealPodium(index){
+  const generation = ++podiumGeneration;
+  pendingPodium = true; retryIndex = null;
   const stage = slides[index];
-  si = index; showFrame();
-  const place = stage.res.rows.length - stage.shown;
+  si = index;
+  liveStatus = rehearsal ? "" : "Bezig met publiceren…";
+  const ok = await showFrame();
+  if (generation !== podiumGeneration || view !== "present") return;
+  pendingPodium = false;
+  if (!ok){ retryIndex = index; render(); return; }
+  const place = stage.res.ranks[stage.res.ranks.length - stage.shown] - 1;
   confetti(place === 0 ? 3000 : 1650, PODIUM_EMOJI[place], place === 0);
   const next = slides[index+1];
   if (next?.type === "q" && next.res === stage.res){
@@ -1264,7 +1316,7 @@ function revealPodium(index){
   }
 }
 function step(dir){
-  if (drumming || (dir > 0 && podiumTimer !== null)) return;
+  if (drumming || (dir > 0 && (pendingPodium || podiumTimer !== null || retryIndex !== null))) return;
   cancelPodium();
   const nextI = Math.max(0, Math.min(slides.length - 1, si + dir));
   if (nextI === si) return;
@@ -1320,28 +1372,55 @@ function rehearsalJump(){
   };
   return select;
 }
+let guestPreview = false, rehearsalPublic = null, publicPhoto = null, receivedPhoto = null;
+async function shareBonus(){
+  const stage = currentFrame(), index = si;
+  const answer = stage.type === "bonusWinner";
+  const panel = stage.type === "bonusSilhouette" || answer;
+  const frame = {type:"guestBonus", title:answer ? stage.bonus.name : stage.bonus.question, answer};
+  let photo = null;
+  try{
+    if (panel){
+      const img = new Image();
+      img.src = stage.bonus.pokemon || stage.bonus.photo;
+      await img.decode();
+      const h = stage.bonus.pokemon ? Math.floor(img.height/2) : img.height;
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.min(900,img.width); canvas.height = Math.max(1,Math.round(h*canvas.width/img.width));
+      canvas.getContext("2d").drawImage(img,0,stage.bonus.pokemon && answer ? img.height-h : 0,img.width,h,0,0,canvas.width,canvas.height);
+      photo = canvas.toDataURL("image/jpeg",.76);
+      frame.photoId = crypto.randomUUID();
+    }
+    if (view !== "present" || si !== index) return;
+    if (rehearsal){ rehearsalPublic = {...frame,photo}; render(); }
+    else if (await publish(frame,photo)){ render(); toast("Gasten zien deze bonusstap"); }
+  }catch(e){ toast("Bonusbeeld delen mislukt. Probeer opnieuw."); }
+}
 function vPresent(){
-  const frame = currentFrame();
-  const wrap = rehearsal && frame.type === "intro" ? waitingFrame("Privé oefenen · wachtkamer") : renderFrame(frame, true);
+  const ownFrame = currentFrame();
+  const frame = rehearsal && guestPreview && ownFrame.bonus ? rehearsalPublic || {type:"intro",title:"Wachtkamer"} : ownFrame;
+  const wrap = rehearsal && frame.type === "intro" ? waitingFrame("Privé oefenen · wachtkamer") : renderFrame(frame, !guestPreview || !rehearsal);
   wrap.append(el("div", { class: "bar" },
     el("button", { onclick: () => step(-1) }, "⬅️ terug"),
-    el("span", {}, `${rehearsal ? "Privé oefenen · " : ""}${si + 1} / ${slides.length}`),
+    el("span", {}, `${rehearsal ? (guestPreview ? "OEFENEN · Gast · " : "OEFENEN · Beheer · ") : "LIVE · "}${si + 1} / ${slides.length}`),
     el("button", { onclick: () => step(1) }, "Verder →"),
     el("button", { onclick: () => {
       fadeEnd = 0; hostMusic = !hostMusic;
       render();
-      publish(publicFrame);
+      publish(publicFrame, publicPhoto);
     } }, hostMusic ? "■ Stop muziek" : "▶ Paloma Blanca"),
+    ownFrame.bonus && !drumming ? el("button", { onclick: shareBonus }, rehearsal ? "Test delen met gasten" : "Onthul voor iedereen") : null,
+    rehearsal ? el("button", { onclick: () => { guestPreview = !guestPreview; render(); } }, guestPreview ? "Beheerdersbeeld" : "Gastenbeeld") : null,
     rehearsal ? rehearsalJump() : el("button", { onclick: () => copyInviteLink() }, "Kopieer uitnodigingslink"),
-    rehearsal ? null : el("button", { onclick: () => publish(currentFrame()) }, "Synchroniseer"),
+    rehearsal ? null : el("button", { onclick: () => retryIndex !== null ? revealPodium(retryIndex) : publish(currentFrame()) }, "Synchroniseer"),
     el("button", { onclick: stopPresentation }, "✖️ stop")));
-  wrap.append(el("p", { id: "live-status", role: "status" }, liveStatus));
+  wrap.append(el("p", { id: "live-status", role: "status" }, liveStatus || (ownFrame.bonus ? ((rehearsal ? rehearsalPublic : publicFrame)?.type === "guestBonus" ? "Gasten zien de laatst gedeelde bonusstap." : "Gasten zien nog het vorige scherm.") : "")));
   return wrap;
 }
 function vLive(){
   if (liveSlide){
     const frame = liveSlide.type === "intro" ? waitingFrame(liveSlide.title) : renderFrame(liveSlide, false);
-    if (liveSlide.music || liveSlide.type === "q" || listenerMusic) frame.append(el("div", { class: "bar" },
+    if (liveSlide.music || ["guestBonus","q"].includes(liveSlide.type) || listenerMusic) frame.append(el("div", { class: "bar" },
       el("button", { onclick: () => { listenerMusic = !listenerMusic; render(); } },
         listenerMusic ? "Geluid uit" : "Geluid aan")));
     if (liveStatus) frame.append(el("p", { role: "status" }, liveStatus));
@@ -1359,7 +1438,10 @@ function bonusPortrait(photo, alt, previous){
 function renderFrame(sl, host){
   const wrap = el("div", { class: host ? "show" : "show watching",
     onclick: host ? (e) => { if (!e.target.closest("button, select, option") && view === "present") step(1); } : null });
-  if (sl.type === "bonusSilhouette" || (sl.type === "bonusWinner" && sl.bonus.pokemon)){
+  if (sl.type === "guestBonus"){
+    const photo = sl.photo || receivedPhoto;
+    wrap.append(el("div",{class:"center"},photo ? el("img",{src:photo,alt:sl.title,style:"max-width:94%;max-height:70dvh;object-fit:contain"}) : null,el("h1",{},sl.title)));
+  } else if (sl.type === "bonusSilhouette" || (sl.type === "bonusWinner" && sl.bonus.pokemon)){
     const answer = sl.type === "bonusWinner";
     wrap.append(el("div", { class: "center" }, el("div", { class: "pokemon-panel" + (answer ? " answer" : " entrance") },
       el("div", { class: "bonus-art" },
@@ -1385,7 +1467,8 @@ function renderFrame(sl, host){
     const ol = el("ol", {});
     const firstVisible = sl.rows.findIndex(Boolean);
     sl.rows.forEach((row, i) => {
-      const place = el("span", { class: "p", "aria-label": `Plaats ${i + 1}` }, row ? ["🥇","🥈","🥉"][i] : `#${i + 1}`);
+      const rank = row?.rank ?? sl.ranks?.[i] ?? i+1;
+      const place = el("span", { class: "p", "aria-label": `Plaats ${rank}` }, row ? ["🥇","🥈","🥉"][rank-1] : `#${rank}`);
       if (!row){
         const drum = i === 0 && sl.drumming;
         ol.append(el("li", { class: drum ? "hidden drum" : "hidden" }, place, drum ? "🥁🥁🥁 …" : "❓"));
@@ -1393,7 +1476,7 @@ function renderFrame(sl, host){
       }
       const winner = i === 0;
       ol.append(el("li", { class: (winner ? "win " : "") + (i === firstVisible ? "new" : "") },
-        place, av(row.name), el("strong", {}, row.name)));
+        place, ...(row.names || [row.name]).flatMap(name => [av(name), el("strong", {}, name)])));
     });
     wrap.append(
       el("div", { class: "kicker" }, `Vraag ${sl.number} van ${sl.total} 🎯`),
