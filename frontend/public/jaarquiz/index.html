@@ -561,7 +561,7 @@ function releaseCircle(e){
   nextHeartbeat = 0;
 }
 for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) arena.addEventListener(type, releaseCircle);
-function waitingFrame(title){
+function waitingFrame(){
   if (!circles.has(visitorId)){
     roomCircle(visitorId, { x: .18 + Math.random() * .64, y: .25 + Math.random() * .5, vx: 0, vy: 0 });
   }
@@ -569,10 +569,7 @@ function waitingFrame(title){
     [[.33,.42],[.67,.50],[.46,.67]].forEach(([x,y], i) => roomCircle((i+4).toString(16).repeat(32), {x,y,vx:0,vy:0}));
   }
   if (!roomFrame) roomFrame = requestAnimationFrame(tickRoom);
-  return el("div", { class: "show watching waiting-screen" }, arena,
-    el("div", { class: "waiting-heading" }, el("h1", {}, title || "Jaarquiz"),
-      el("p", { class: "waiting-count" }, `${circles.size} in de wachtkamer`),
-      el("p", {}, "Gooi je cirkel tegen een andere. Een geraakte cirkel komt na 5 seconden terug.")));
+  return el("div", { class: "show watching waiting-screen" }, arena);
 }
 const musicDock = el("div", { class: "music-dock", hidden: true });
 document.body.append(musicDock);
@@ -651,8 +648,7 @@ async function go(v){
 
 function vLoading(){ return el("div", { class: "card" }, el("p", {}, "Laden…")); }
 function vNoCode(){
-  return el("div", { class: "card" }, el("h2", {}, "Geen quiz gevonden"),
-    el("p", {}, "Open de quiz via de link die je hebt gekregen. Die eindigt op #gevolgd-door-een-code."));
+  return el("div", { class: "card" }, el("h2", {}, "Geen quiz gevonden"));
 }
 
 function vIntro(){
@@ -664,9 +660,9 @@ function vIntro(){
   });
   return el("div", {},
     el("h1", {}, quiz.title || "Rank je jaargenoten"),
-    el("p", {}, `${quiz.questions.length} vragen. Bij elke vraag sleep je alle namen op volgorde: bovenaan = meest, onderaan = minst. Jezelf ranken hoort er ook bij.`),
+
     el("div", { class: "card" }, el("h2", {}, "Wie ben jij? 🤔👇"),
-      el("p", { style: "font-size:13px;margin-top:-4px" }, "Elke naam kan maar één keer gekozen worden."),
+
       grid,
       el("button", { class: "btn", disabled: !picked || busy, onclick: join }, "Start 🚀✨")));
 }
@@ -825,7 +821,7 @@ function vQuestion(){
   };
   return el("div", { class: "qview" },
     el("div", { class: "progress" }, el("div", { style: `width:${(qi / quiz.questions.length) * 100}%` })),
-    el("div", { class: "qnum" }, `Vraag ${qi + 1} van ${quiz.questions.length} ✨`, el("span", { class: "drag" }, "sleep 👆 of ▲▼")),
+    el("div", { class: "qnum" }, `Vraag ${qi + 1} van ${quiz.questions.length} ✨`),
     el("h1", {}, q.text),
     q.sub ? el("p", { class: "sub" }, q.sub) : null,
     el("div", { class: "rank" }, nums, list),
@@ -841,7 +837,7 @@ function vDone(){
   return el("div", {},
     el("div", { class: "big" }, "🍻🎉🙌"),
     el("h1", { style: "text-align:center" }, "Ingestuurd, " + mine.voter + "! 🫡✨"),
-    el("p", { style: "text-align:center" }, quiz.revealed ? "De uitslag is bekend." : "De uitslag blijft geheim tot de quizavond. Tot die tijd kun je je antwoorden nog aanpassen."),
+
     el("div", { class: "row" },
       quiz.revealed ? null : el("button", { class: "btn ghost", onclick: () => { qi = 0; view = "q"; render(); } }, "Antwoorden aanpassen"),
       quiz.revealed ? el("button", { class: "btn", onclick: () => go("results") }, "Bekijk uitslag") : null));
@@ -875,7 +871,7 @@ function resultsView(R, questions){
     const t = el("table", {});
     R.self_knowledge.forEach((s, i) => t.append(el("tr", {}, el("td", {}, (i === 0 ? "🪞 " : "") + s.name), el("td", { class: "r" }, `${s.off_by.toFixed(1)} plekken ernaast`))));
     out.push(el("div", { class: "card" }, el("h2", {}, "Zelfkennis"),
-      el("p", {}, "Hoe ver zat je eigen plek gemiddeld af van hoe de anderen jou rankten? Laag = je kent jezelf."), t));
+      t));
   }
   return out;
 }
@@ -945,7 +941,7 @@ function bonusSettings(){
   }
   return el("div", { class: "card" },
     el("h2", {}, "Geheime bonusuitslag"),
-    el("p", {}, "Alleen zichtbaar op jouw presentatiescherm. Gebruik deze browser ook op de quizavond."),
+
     el("details", {}, el("summary", {}, "Bonus instellen"),
     el("div", { class: "row" }, el("label", {}, "Na vraag ", after), el("label", {}, "Naam ", name)),
     el("p", {}, el("label", {}, "Vraag ", question)),
@@ -1081,9 +1077,8 @@ function vAdmin(){
       el("div", { class: "row" },
         el("button", { class: "btn small", onclick: async () => { try{ await navigator.clipboard.writeText(link); toast("Link gekopieerd"); }catch(e){ toast("Kopiëren lukte niet"); } } }, "Kopieer link"),
         el("button", { class: "btn small ghost", onclick: () => saveAdmin(admin.config, admin.revealed, "new") }, "Nieuwe link (oude vervalt)")),
-      el("p", {}, "Via dezelfde link kijken deelnemers automatisch mee zodra je presenteert."),
-      el("label", { class: "toggle" }, rev, "Uitslag zichtbaar voor iedereen"),
-      el("p", { style: "font-size:13px;margin:0" }, "Zolang de uitslag geheim is, ziet iedereen alleen zijn eigen antwoorden. Zodra je hem vrijgeeft, kan niemand nog iets aanpassen en ziet iedereen de gemiddelden, nooit wie wat heeft ingevuld.")));
+
+      el("label", { class: "toggle" }, rev, "Uitslag zichtbaar voor iedereen")));
 
     const t = el("table", {});
     admin.responses.forEach(r => t.append(el("tr", {},
@@ -1094,8 +1089,7 @@ function vAdmin(){
         render();
       } }, "Vrijgeven")))));
     out.push(el("div", { class: "card" }, el("h2", {}, `Ingevuld (${admin.responses.length} van ${admin.config.people.length})`),
-      admin.responses.length ? t : el("p", {}, "Nog niemand."),
-      el("p", { style: "font-size:13px;margin:10px 0 0" }, "Vrijgeven wist die persoon zijn antwoorden, zodat de naam opnieuw gekozen kan worden.")));
+      admin.responses.length ? t : el("p", {}, "Nog niemand.")));
 
     out.push(bonusSettings());
     out.push(el("button", { class: "btn", style: "margin-bottom:14px", onclick: startRehearsal }, "🎬 Privé testen · hele presentatie"));
@@ -1109,7 +1103,7 @@ function vAdmin(){
     out.push(resultDetails);
   }
   out.push(el("div", { class: "card" }, el("h2", {}, admin?.exists ? "Configuratie" : "Nieuwe quiz"),
-    el("p", {}, "Namen, foto's en vragen als JSON. Laad een bestand of plak de tekst."), file, el("div", { style: "height:8px" }), ta,
+    file, el("div", { style: "height:8px" }), ta,
     el("div", { style: "height:10px" }), importBtn));
   return el("div", {}, out);
 }
@@ -1399,10 +1393,10 @@ async function shareBonus(){
 function vPresent(){
   const ownFrame = currentFrame();
   const frame = rehearsal && guestPreview && ownFrame.bonus ? rehearsalPublic || {type:"intro",title:"Wachtkamer"} : ownFrame;
-  const wrap = rehearsal && frame.type === "intro" ? waitingFrame("Privé oefenen · wachtkamer") : renderFrame(frame, !guestPreview || !rehearsal);
+  const wrap = rehearsal && frame.type === "intro" ? waitingFrame() : renderFrame(frame, !guestPreview || !rehearsal);
   wrap.append(el("div", { class: "bar" },
     el("button", { onclick: () => step(-1) }, "⬅️ terug"),
-    el("span", {}, `${rehearsal ? (guestPreview ? "OEFENEN · Gast · " : "OEFENEN · Beheer · ") : "LIVE · "}${si + 1} / ${slides.length}`),
+    el("span", {}, `${rehearsal ? "" : "LIVE · "}${si + 1} / ${slides.length}`),
     el("button", { onclick: () => step(1) }, "Verder →"),
     el("button", { onclick: () => {
       fadeEnd = 0; hostMusic = !hostMusic;
@@ -1414,12 +1408,12 @@ function vPresent(){
     rehearsal ? rehearsalJump() : el("button", { onclick: () => copyInviteLink() }, "Kopieer uitnodigingslink"),
     rehearsal ? null : el("button", { onclick: () => retryIndex !== null ? revealPodium(retryIndex) : publish(currentFrame()) }, "Synchroniseer"),
     el("button", { onclick: stopPresentation }, "✖️ stop")));
-  wrap.append(el("p", { id: "live-status", role: "status" }, liveStatus || (ownFrame.bonus ? ((rehearsal ? rehearsalPublic : publicFrame)?.type === "guestBonus" ? "Gasten zien de laatst gedeelde bonusstap." : "Gasten zien nog het vorige scherm.") : "")));
+  wrap.append(el("p", { id: "live-status", role: "status" }, liveStatus));
   return wrap;
 }
 function vLive(){
   if (liveSlide){
-    const frame = liveSlide.type === "intro" ? waitingFrame(liveSlide.title) : renderFrame(liveSlide, false);
+    const frame = liveSlide.type === "intro" ? waitingFrame() : renderFrame(liveSlide, false);
     if (liveSlide.music || ["guestBonus","q"].includes(liveSlide.type) || listenerMusic) frame.append(el("div", { class: "bar" },
       el("button", { onclick: () => { listenerMusic = !listenerMusic; render(); } },
         listenerMusic ? "Geluid uit" : "Geluid aan")));
@@ -1461,8 +1455,7 @@ function renderFrame(sl, host){
     wrap.append(el("div", { class: "center" },
       el("div", { class: "big" }, "🎬🥁🍿"),
       el("h1", {}, sl.title || "Jaarquiz ✨🤖"),
-      el("p", {}, `${sl.participants} jaargenoten hebben gestemd 🗳️💯 · ${sl.total} vragen 🧠`),
-      el("p", {}, host ? "De wachtkamer is open. Tik op Verder om te beginnen." : "De presentator bepaalt wanneer we verdergaan.")));
+      el("p", {}, `${sl.participants} jaargenoten hebben gestemd 🗳️💯 · ${sl.total} vragen 🧠`)));
   } else if (sl.type === "q"){
     const ol = el("ol", {});
     const firstVisible = sl.rows.findIndex(Boolean);
