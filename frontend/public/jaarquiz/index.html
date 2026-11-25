@@ -205,7 +205,7 @@
   .show ol{list-style:none;margin:0;padding:0;flex:1;min-height:0;display:flex;flex-direction:column;gap:.8vh}
   .show ol li{flex:1 1 0;min-height:48px;display:flex;align-items:center;gap:1.4vw;background:var(--panel);border:1px solid var(--line);border-radius:1.4vh;padding:0 1.6vw;font-size:clamp(16px,3.1vh,42px);font-weight:700;transition:transform .35s,background .35s}
   .show ol li .p{width:2.4em;color:var(--muted);font-weight:800}
-  .show ol li .av{width:clamp(28px,4.6vh,64px);height:clamp(28px,4.6vh,64px);font-size:clamp(12px,2vh,26px)}
+  .show ol li .av{width:clamp(52px,min(18vw,11dvh),132px);height:clamp(52px,min(18vw,11dvh),132px);font-size:clamp(20px,4vh,40px);object-position:center 36%}
   .show ol li .a{margin-left:auto;color:var(--muted);font-weight:500;font-size:.8em}
   .show ol li.hidden{color:var(--muted);background:transparent;border-style:dashed}
   .show ol li.new{animation:podium-arrival .55s ease-out}
@@ -304,12 +304,20 @@ function confetti(ms = 3800, emojis = SLOP, fireworks = false){
   c.hidden = false; c.width = innerWidth; c.height = innerHeight;
   const ctx = c.getContext("2d");
   const colors = ["#ffcc4d", "#ff6f91", "#5ee6a8", "#7aa2ff", "#c792ea"];
-  const n = fireworks ? 230 : 150;
+  const n = innerWidth < 700 ? (fireworks ? 64 : 40) : (fireworks ? 112 : 72);
+  const sprites = emojis.map(emoji => {
+    const tile = document.createElement("canvas");
+    tile.width = tile.height = 48;
+    const pen = tile.getContext("2d");
+    pen.font = "34px system-ui"; pen.textAlign = "center"; pen.textBaseline = "middle";
+    pen.fillText(emoji, 24, 24);
+    return tile;
+  });
   const parts = Array.from({ length: n }, () => ({
     x: Math.random() * c.width, y: -20 - Math.random() * c.height * .5,
     vx: (Math.random() - .5) * 4, vy: 2 + Math.random() * 4, r: Math.random() * Math.PI, vr: (Math.random() - .5) * .3,
     s: 7 + Math.random() * 8, col: colors[Math.floor(Math.random() * colors.length)],
-    emoji: Math.random() < .65 ? emojis[Math.floor(Math.random() * emojis.length)] : null,
+    sprite: Math.random() < .65 ? sprites[Math.floor(Math.random() * sprites.length)] : null,
   }));
   if (fireworks) parts.forEach((p, i) => {
     const angle = i * 2.4;
@@ -317,12 +325,15 @@ function confetti(ms = 3800, emojis = SLOP, fireworks = false){
     p.vx = Math.cos(angle) * (3 + Math.random() * 8); p.vy = Math.sin(angle) * (3 + Math.random() * 8);
   });
   const t0 = performance.now();
+  let last = t0;
   (function frame(t){
+    const dt = Math.min(2, (t-last)/16.667); last = t;
     ctx.clearRect(0, 0, c.width, c.height);
     for (const p of parts){
-      p.x += p.vx; p.y += p.vy; p.vy += .05; p.r += p.vr;
+      p.x += p.vx * dt; p.y += p.vy * dt; p.vy += .05 * dt; p.r += p.vr * dt;
+      if (p.y < -40 || p.y > c.height+40 || p.x < -40 || p.x > c.width+40) continue;
       ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r);
-      if (p.emoji){ ctx.font = (p.s * 2.2) + "px system-ui"; ctx.fillText(p.emoji, 0, 0); }
+      if (p.sprite) ctx.drawImage(p.sprite, -p.s*1.5, -p.s*1.5, p.s*3, p.s*3);
       else { ctx.fillStyle = p.col; ctx.fillRect(-p.s / 2, -p.s / 4, p.s, p.s / 2); }
       ctx.restore();
     }
@@ -1194,6 +1205,7 @@ function showFrame(){
 }
 async function stopPresentation(){
   if (drumming || view !== "present") return;
+  cancelPodium();
   if (rehearsal){
     rehearsal = false; view = "admin"; hostMusic = false; pokemonSound(); clearRoom(); render();
     return;
@@ -1209,11 +1221,6 @@ async function pollLive(){
     const { slide, circles: snapshot = {} } = await api("GET", `/${encodeURIComponent(CODE)}/presentation`);
     if (liveStatus || JSON.stringify(slide) !== JSON.stringify(liveSlide)){
       liveStatus = "";
-      if (listenerMusic && slide?.type === "q" && !slide.drumming){
-        const place = slide.rows.findIndex(Boolean);
-        const previous = liveSlide?.type === "q" && liveSlide.number === slide.number ? liveSlide.rows.findIndex(Boolean) : -1;
-        if (place >= 0 && (previous < 0 || place < previous)) podiumCue(place);
-      }
       liveSlide = slide;
       render();
     }
@@ -1238,34 +1245,34 @@ async function pollLive(){
   }
   setTimeout(pollLive, liveSlide?.type === "intro" ? 850 : LIVE || liveSlide ? 1500 : 4000);
 }
-function podiumCue(place){
-  try{
-    audio ||= new (window.AudioContext || window.webkitAudioContext)();
-    audio.resume().catch(()=>{});
-    const notes = [[72,76,79,84],[62,69,74],[55,60]][place] || [60];
-    notes.forEach((note,i)=>{
-      const time = audio.currentTime + i*.105;
-      const osc = audio.createOscillator(), gain = audio.createGain();
-      osc.type = place === 2 ? "sine" : "triangle";
-      osc.frequency.setValueAtTime(440*2**((note-69)/12),time);
-      gain.gain.setValueAtTime(.001,time); gain.gain.exponentialRampToValueAtTime(.14,time+.02);
-      gain.gain.exponentialRampToValueAtTime(.001,time+.33);
-      osc.connect(gain).connect(audio.destination); osc.start(time); osc.stop(time+.34);
-    });
-    if (place === 1 && window.speechSynthesis){
-      const cheer = new SpeechSynthesisUtterance("Ooooh!"); cheer.pitch=1.32; cheer.rate=.85;
-      window.speechSynthesis.speak(cheer);
-    }
-  }catch(e){}
+let podiumTimer = null;
+function cancelPodium(){
+  clearTimeout(podiumTimer);
+  podiumTimer = null;
+}
+function revealPodium(index){
+  const stage = slides[index];
+  si = index; showFrame();
+  const place = stage.res.rows.length - stage.shown;
+  confetti(place === 0 ? 3000 : 1650, PODIUM_EMOJI[place], place === 0);
+  const next = slides[index+1];
+  if (next?.type === "q" && next.res === stage.res){
+    podiumTimer = setTimeout(() => {
+      podiumTimer = null;
+      if (view === "present" && si === index) revealPodium(index+1);
+    }, 3200);
+  }
 }
 function step(dir){
-  if (drumming) return;
+  if (drumming || (dir > 0 && podiumTimer !== null)) return;
+  cancelPodium();
   const nextI = Math.max(0, Math.min(slides.length - 1, si + dir));
   if (nextI === si) return;
   const s2 = slides[nextI];
   if (dir > 0 && s2.type === "q" && s2.shown && !faded){
     faded = true; if (hostMusic){ fadeEnd = Date.now()+4500; hostMusic = false; }
   }
+  if (dir > 0 && s2.type === "q" && s2.shown){ revealPodium(nextI); return; }
   if (slides[si].type === "bonusSilhouette" || s2.type === "bonusSilhouette") pokemonSound(s2.type === "bonusSilhouette");
   if (dir > 0 && s2.type === "bonusWinner" && !s2.bonus.pokemon && s2.bonus.ages?.some(Boolean)){
     drumming = true; si = nextI;
@@ -1279,12 +1286,11 @@ function step(dir){
     return;
   }
   // The step that reveals #1: drumroll first.
-  if (dir > 0 && ((s2.type === "bonusWinner" && !s2.bonus.pokemon) || (s2.type === "q" && s2.shown === s2.res.rows.length))){
+  if (dir > 0 && s2.type === "bonusWinner" && !s2.bonus.pokemon){
     drumming = true; si = nextI; showFrame(); drumroll(1.6);
     setTimeout(() => {
       drumming = false; showFrame();
-      if (s2.type === "bonusWinner") confetti(5200, BONUS_EMOJI, true);
-      else { podiumCue(0); confetti(4200, PODIUM_EMOJI[0], true); }
+      confetti(5200, BONUS_EMOJI, true);
     }, 1600);
     return;
   }
@@ -1293,10 +1299,6 @@ function step(dir){
     sayBonusName(s2.bonus.name, () => {
       if (view === "present" && slides[si] === s2) confetti(4500, ["🎆", "🎇", "💥", "✨", ...BONUS_EMOJI], true);
     });
-  }
-  if (dir > 0 && s2.type === "q" && s2.shown){
-    const place = s2.res.rows.length - s2.shown;
-    podiumCue(place); confetti(2300, PODIUM_EMOJI[place]);
   }
   if (dir > 0 && s2.type === "end") confetti(6000);
 }
@@ -1314,7 +1316,7 @@ function rehearsalJump(){
   });
   select.onchange = () => {
     if (!rehearsal || drumming || select.value === "") return;
-    pokemonSound(); si = Number(select.value); bonusFrame = null; showFrame();
+    cancelPodium(); pokemonSound(); si = Number(select.value); bonusFrame = null; showFrame();
   };
   return select;
 }
@@ -1425,7 +1427,7 @@ window.addEventListener("keydown", (e) => {
     const cur = slides[si];
     let j = si + 1;
     while (j < slides.length - 1 && !(slides[j].type !== "q" || (slides[j].shown === 0 && slides[j].res !== (cur && cur.res)))) j++;
-    if (j < slides.length){ si = j; showFrame(); }
+    if (j < slides.length){ cancelPodium(); si = j; showFrame(); }
   }
 });
 
