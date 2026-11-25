@@ -152,6 +152,7 @@ class PresentationUpdate(BaseModel):
     join_code: str
     # This is only the currently visible slide, never the full presentation.
     slide: Optional[dict] = None
+    photo: Optional[str] = Field(default=None, max_length=400_000, pattern=r"^data:image/jpeg;base64,[A-Za-z0-9+/=]+$")
 
 
 class WaitingVisitor(BaseModel):
@@ -256,6 +257,7 @@ def compute_results(config: QuizConfig, responses: list[dict]) -> dict:
     each participant's place for themselves was from where the others put them.
 
     Only aggregates leave here — no participant's own ranking is exposed."""
+    responses = [r for r in responses if r["done"]]
     names = config.names()
     per_question = []
     for q in config.questions:
@@ -280,7 +282,14 @@ def compute_results(config: QuizConfig, responses: list[dict]) -> dict:
                 "min": min(p),
                 "max": max(p),
             })
-        rows.sort(key=lambda x: (x["avg"], x["name"]))
+        rows.sort(key=lambda x: (sum(places[x["name"]]), x["name"]))
+        previous = None
+        for index, row in enumerate(rows, 1):
+            total = sum(places[row["name"]])
+            if total != previous:
+                rank = index
+            row["rank"] = rank
+            previous = total
         per_question.append({"id": q.id, "votes": votes, "rows": rows})
 
     self_knowledge = []
@@ -361,10 +370,15 @@ async def admin_put(body: AdminUpdate, admin=Depends(require_admin), db=Depends(
 
     now = _now()
     if current:
-        await db.execute(
-            "UPDATE jaarquiz SET join_code = ?, config = ?, revealed = ?, updated_at = ? WHERE id = ?",
-            (code, raw, body.revealed, now, QUIZ_ID),
+        if body.join_code == "new":
+            await db.execute("UPDATE jaarquiz SET live_state = '{}', live_photo = NULL WHERE id = ?", (QUIZ_ID,))
+        changed = await db.execute_fetchall(
+            "UPDATE jaarquiz SET join_code = ?, config = ?, revealed = ?, updated_at = ? WHERE id = ? AND join_code = ? RETURNING id",
+            (code, raw, body.revealed, now, QUIZ_ID, current["join_code"]),
         )
+        if not changed:
+            await db.rollback()
+            raise HTTPException(409, "presentation_changed")
     else:
         await db.execute(
             "INSERT INTO jaarquiz (id, join_code, config, revealed, created_at, updated_at) "
@@ -377,19 +391,18 @@ async def admin_put(body: AdminUpdate, admin=Depends(require_admin), db=Depends(
 
 @router.put("/admin/presentation")
 async def admin_presentation(body: PresentationUpdate, admin=Depends(require_admin), db=Depends(db_dep)):
-    # Keep the current frame alongside the config so every API worker sees it.
-    # Config saves and invite rotations clear it by writing a fresh config.
+    # A frame and its optional cropped photo become visible in the same commit.
     raw = json.dumps(body.slide, ensure_ascii=False)
     if len(raw.encode("utf-8")) > 24_000:
         raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "config_too_large")
     for _ in range(3):
         rows = await db.execute_fetchall(
-            "SELECT config FROM jaarquiz WHERE id = ? AND join_code = ?",
+            "SELECT live_state FROM jaarquiz WHERE id = ? AND join_code = ?",
             (QUIZ_ID, body.join_code),
         )
         if not rows:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "quiz_not_found")
-        previous = rows[0]["config"]
+        previous = rows[0]["live_state"]
         stored = json.loads(previous)
         if not body.slide or body.slide.get("type") != "intro":
             stored.pop("_waiting_visitors", None)
@@ -399,10 +412,11 @@ async def admin_presentation(body: PresentationUpdate, admin=Depends(require_adm
             stored["_presentation"] = body.slide
         # Compare against what we read so a concurrent config edit can't be lost.
         updated = await db.execute_fetchall(
-            "UPDATE jaarquiz SET config = ? WHERE id = ? AND join_code = ? AND config = ? RETURNING id",
+            "UPDATE jaarquiz SET live_state = ? WHERE id = ? AND join_code = ? AND live_state = ? RETURNING id",
             (json.dumps(stored, ensure_ascii=False), QUIZ_ID, body.join_code, previous),
         )
         if updated:
+            await db.execute("UPDATE jaarquiz SET live_photo = ? WHERE id = ?", (body.photo, QUIZ_ID))
             await db.commit()
             return {"ok": True}
         await db.rollback()
@@ -501,7 +515,6 @@ async def quiz_save(
 async def waiting_room(code: str, body: WaitingVisitor, response: Response,
                        x_quiz_token: Optional[str] = Header(default=None), db=Depends(db_dep)):
     """Anonymous, expiring tab presence shared by all API workers."""
-    await _quiz_by_code(db, code)
     voter = None
     if x_quiz_token:
         rows = await db.execute_fetchall(
@@ -513,11 +526,11 @@ async def waiting_room(code: str, body: WaitingVisitor, response: Response,
     response.headers["Cache-Control"] = "no-store"
     for _ in range(3):
         rows = await db.execute_fetchall(
-            "SELECT config FROM jaarquiz WHERE id = ? AND join_code = ?", (QUIZ_ID, code)
+            "SELECT live_state FROM jaarquiz WHERE id = ? AND join_code = ?", (QUIZ_ID, code)
         )
         if not rows:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "quiz_not_found")
-        previous = rows[0]["config"]
+        previous = rows[0]["live_state"]
         stored = json.loads(previous)
         if (stored.get("_presentation") or {}).get("type") != "intro":
             return {"visitors": []}
@@ -543,7 +556,7 @@ async def waiting_room(code: str, body: WaitingVisitor, response: Response,
                 visitors[body.visitor]["streak"] += 1
         stored["_waiting_visitors"] = visitors
         updated = await db.execute_fetchall(
-            "UPDATE jaarquiz SET config = ? WHERE id = ? AND join_code = ? AND config = ? RETURNING id",
+            "UPDATE jaarquiz SET live_state = ? WHERE id = ? AND join_code = ? AND live_state = ? RETURNING id",
             (json.dumps(stored, ensure_ascii=False), QUIZ_ID, code, previous),
         )
         if updated:
@@ -555,12 +568,27 @@ async def waiting_room(code: str, body: WaitingVisitor, response: Response,
 
 @router.get("/{code}/presentation")
 async def quiz_presentation(code: str, response: Response, db=Depends(db_dep)):
-    quiz = await _quiz_by_code(db, code)
+    rows = await db.execute_fetchall("SELECT live_state FROM jaarquiz WHERE id = ? AND join_code = ?", (QUIZ_ID, code))
+    if not rows:
+        raise HTTPException(404, "quiz_not_found")
+    state = json.loads(rows[0]["live_state"])
     response.headers["Cache-Control"] = "no-store"
-    slide = quiz["presentation"]
+    slide = state.get("_presentation")
     if slide and slide.get("type") == "intro":
-        return {"slide": slide, "circles": quiz["waiting_visitors"]}
+        return {"slide": slide, "circles": _active_visitors(state)}
     return {"slide": slide}
+
+
+@router.get("/{code}/photo/{frame_id}")
+async def live_photo(code: str, frame_id: str, response: Response, db=Depends(db_dep)):
+    rows = await db.execute_fetchall("SELECT live_state, live_photo FROM jaarquiz WHERE id = ? AND join_code = ?", (QUIZ_ID, code))
+    if not rows or not rows[0]["live_photo"]:
+        raise HTTPException(404, "photo_not_found")
+    frame = json.loads(rows[0]["live_state"]).get("_presentation") or {}
+    if frame.get("photoId") != frame_id:
+        raise HTTPException(404, "photo_not_found")
+    response.headers["Cache-Control"] = "no-store"
+    return {"photo": rows[0]["live_photo"]}
 
 
 @router.get("/{code}/results")
