@@ -187,7 +187,8 @@
   .waiting-circle.mine:active{cursor:grabbing}
   .waiting-circle{transition:opacity .32s ease}
   .waiting-circle.out{opacity:.65;pointer-events:none;border:2px dashed white;background:#292638!important}
-  .waiting-circle.out::after{content:attr(data-count);color:white;font-weight:800}
+  .waiting-circle.out img{opacity:0}
+  .waiting-circle.out::after{position:absolute;inset:0;display:grid;place-items:center;content:attr(data-count);color:white;font-weight:800}
   .waiting-circle.leader::before{content:"👑";position:absolute;top:-1.2em;animation:crown-in .3s ease-out}
   @keyframes crown-in{from{transform:translateY(-12px);opacity:0}}
   .show ol li.new .av{outline:3px solid gold}
@@ -481,12 +482,16 @@ function tickRoom(now){
   lastFrame = now;
   const width = arena.clientWidth, height = arena.clientHeight;
   if (width > diameter && height > diameter){
-    const leader = [...circles.values()].filter(c => !isOut(c) && c.streak > 0).sort((a,b) => b.streak-a.streak || a.id.localeCompare(b.id))[0];
+    let leader = null;
+    for (const c of circles.values()){
+      if (!isOut(c) && c.streak && (!leader || c.streak > leader.streak || (c.streak === leader.streak && c.id < leader.id))) leader = c;
+    }
     const bodies = [...circles.values()].filter(c => {
       const out = isOut(c);
       c.node.classList.toggle("out", out);
       c.node.classList.toggle("leader", c === leader);
-      if (out) c.node.dataset.count = Math.ceil(c.out_until-Date.now()/1000);
+      const count = out ? String(Math.ceil(c.out_until-Date.now()/1000)) : "";
+      if (c.node.dataset.count !== count) c.node.dataset.count = count;
       if (out && !c.wasOut){
         c.vx = c.vy = 0;
         if (c.id === visitorId){
@@ -1006,8 +1011,8 @@ function sayBonusName(name, after){
   if (!name || !("speechSynthesis" in window)){ after(); return; }
   const line = new SpeechSynthesisUtterance("It’s " + name + "!");
   line.lang = "en-US";
-  line.pitch = 1.25;
-  line.rate = 1.04;
+  line.pitch = .90;
+  line.rate = .96;
   speechSynthesis.cancel();
   let finished = false;
   const done = () => {
@@ -1166,13 +1171,14 @@ function buildSlides(){
     return counts.size ? [[...counts.keys()].filter(n => counts.get(n)===max).join(" & "),max] : null;
   }
   const first = mostOften(false), lastc = mostOften(true);
-  let split = null;
-  R.questions.forEach(r => r.rows.forEach(row => { const d = row.max - row.min; if (!split || d > split.d) split = { d, row, q: Q.find(q => q.id === r.id) }; }));
+  const spreads = R.questions.flatMap(q => q.rows.map(r => ({name:r.name, spread:r.max-r.min})));
+  const widest = Math.max(...spreads.map(r => r.spread));
+  const divided = [...new Set(spreads.filter(r => r.spread === widest).map(r => r.name))];
   const sk = R.self_knowledge;
   const awards = [];
   if (first) awards.push({ e: "🏆👑", t: "Vaakst op #1", name: first[0], what: `${first[1]}× bovenaan` });
   if (lastc) awards.push({ e: "🧊🫠", t: "Vaakst onderaan", name: lastc[0], what: `${lastc[1]}× op de laatste plek` });
-  if (split) awards.push({ e: "🔥🤯", t: "Meeste ruzie", name: split.row.name, what: `van #${split.row.min} tot #${split.row.max} bij "${split.q ? split.q.text : ""}"` });
+  if (divided.length) awards.push({ e: "🔥🤯", t: "Meeste ruzie", name: divided.join(" & "), what: `${widest} plekken verschil` });
   if (sk.length) awards.push({ e: "🪞🧘", t: "Kent zichzelf het best", name: sk.filter(x => x.off_by === sk[0].off_by).map(x=>x.name).join(" & "), what: `${sk[0].off_by.toFixed(1)} plekken ernaast` });
   if (sk.length > 1) awards.push({ e: "🤡🌈", t: "Leeft in een droomwereld", name: sk.filter(x=>x.off_by === sk.at(-1).off_by).map(x=>x.name).join(" & "), what: `${sk[sk.length - 1].off_by.toFixed(1)} plekken ernaast` });
   for (let k = 0; k <= awards.length; k++) slides.push({ type: "awards", awards, shown: k });
@@ -1387,7 +1393,7 @@ async function shareBonus(){
     }
     if (view !== "present" || si !== index) return;
     if (rehearsal){ rehearsalPublic = {...frame,photo}; render(); }
-    else if (await publish(frame,photo)) toast("Gasten zien deze bonusstap");
+    else if (await publish(frame,photo)){ render(); toast("Gasten zien deze bonusstap"); }
   }catch(e){ toast("Bonusbeeld delen mislukt. Probeer opnieuw."); }
 }
 function vPresent(){
@@ -1408,7 +1414,7 @@ function vPresent(){
     rehearsal ? rehearsalJump() : el("button", { onclick: () => copyInviteLink() }, "Kopieer uitnodigingslink"),
     rehearsal ? null : el("button", { onclick: () => retryIndex !== null ? revealPodium(retryIndex) : publish(currentFrame()) }, "Synchroniseer"),
     el("button", { onclick: stopPresentation }, "✖️ stop")));
-  wrap.append(el("p", { id: "live-status", role: "status" }, liveStatus));
+  wrap.append(el("p", { id: "live-status", role: "status" }, liveStatus || (ownFrame.bonus ? ((rehearsal ? rehearsalPublic : publicFrame)?.type === "guestBonus" ? "Gasten zien de laatst gedeelde bonusstap." : "Gasten zien nog het vorige scherm.") : "")));
   return wrap;
 }
 function vLive(){
