@@ -1176,6 +1176,11 @@ function buildSlides(){
   if (sk.length) awards.push({ e: "🪞🧘", t: "Kent zichzelf het best", name: sk.filter(x => x.off_by === sk[0].off_by).map(x=>x.name).join(" & "), what: `${sk[0].off_by.toFixed(1)} plekken ernaast` });
   if (sk.length > 1) awards.push({ e: "🤡🌈", t: "Leeft in een droomwereld", name: sk.filter(x=>x.off_by === sk.at(-1).off_by).map(x=>x.name).join(" & "), what: `${sk[sk.length - 1].off_by.toFixed(1)} plekken ernaast` });
   for (let k = 0; k <= awards.length; k++) slides.push({ type: "awards", awards, shown: k });
+  const selfKnowledge = sk.slice(0, 10).map(row => ({
+    ...row,
+    rank: sk.findIndex(other => other.off_by === row.off_by) + 1,
+  }));
+  if (selfKnowledge.length) slides.push({ type: "selfKnowledge", rows: selfKnowledge });
   slides.push({ type: "end" });
 }
 let liveSlide = null, liveStatus = "", publishQueue = Promise.resolve();
@@ -1199,12 +1204,13 @@ function currentFrame(){
   if (sl.type === "awards") return {
     type: "awards", awards: sl.awards.map((award, i) => i < sl.shown ? award : null),
   };
+  if (sl.type === "selfKnowledge") return sl;
   return { type: "end" };
 }
 function publish(slide, photo = null){
   if (rehearsal) return Promise.resolve(true);
   // Only ordinary presentation frames may leave the presenter browser.
-  if (slide && !["intro", "q", "awards", "end", "guestBonus"].includes(slide.type)) return Promise.resolve(true);
+  if (slide && !["intro", "q", "awards", "selfKnowledge", "end", "guestBonus"].includes(slide.type)) return Promise.resolve(true);
   const payload = slide && { ...slide, music: hostMusic, fadeEnd };
   publishQueue = publishQueue.then(async () => {
     try{
@@ -1359,6 +1365,7 @@ function rehearsalJump(){
     if (slide.type === "q" && !slide.shown) label = "Vraag " + (quiz.questions.indexOf(slide.q) + 1);
     if (slide.type === "bonus") label = "Geheime bonus";
     if (slide.type === "awards" && !slide.shown) label = "Prijzen";
+    if (slide.type === "selfKnowledge") label = "Zelfkennis";
     if (slide.type === "end") label = "Afsluiting";
     if (label) select.append(el("option", { value:String(index) }, label));
   });
@@ -1485,6 +1492,17 @@ function renderFrame(sl, host){
       ? el("div", { class: "award" + (i === shown - 1 ? " new" : "") }, el("span", {}, a.e), el("div", {}, a.t, el("div", { class: "what" }, a.what)), el("span", { style: "margin-left:auto;display:flex;align-items:center;gap:1vw" }, av(a.name), a.name))
       : el("div", { class: "award hidden" }, el("span", {}, "❓"), "…")));
     wrap.append(list);
+  } else if (sl.type === "selfKnowledge"){
+    const format = new Intl.NumberFormat("nl-NL", { maximumFractionDigits: 2 });
+    const list = el("ol", {});
+    for (const {rank, name, off_by} of sl.rows){
+      list.append(el("li", { class: rank === 1 ? "win" : "" },
+        el("span", { class: "p" }, "#" + rank), av(name), el("strong", {}, name),
+        el("span", { class: "muted", style: "margin-left:auto;white-space:nowrap" }, format.format(off_by))));
+    }
+    wrap.append(el("h1", {}, "Wie kent zichzelf het best?"),
+      el("p", {}, "Gemiddeld aantal plekken verschil tussen je eigen ranking en die van de rest. Lager is beter."),
+      list);
   } else {
     wrap.append(el("div", { class: "center" },
       el("div", { class: "big" }, "🍻🫶🎉"),
