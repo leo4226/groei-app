@@ -1109,9 +1109,9 @@ function vAdmin(){
 }
 
 /* ---------- presentation (#presenteer) ---------- */
-/* One step per tap: each question reveals its podium from third to first,
-   with a drumroll before #1; then the awards one by one. Admin data, so it
-   works before the results are revealed to everyone. */
+/* One tap starts each question's podium reveal, from third to first.
+   Awards advance one by one. Admin data lets this run before public results. */
+const PODIUM_REVEAL_MS = 1000;
 let slides = [], si = 0, drumming = false, bonusFrame = null;
 let presentationResults;
 function startRehearsal(){
@@ -1281,7 +1281,9 @@ async function pollLive(){
     }
     if (e.code === "quiz_not_found") return;
   }
-  setTimeout(pollLive, liveSlide?.type === "intro" ? 850 : LIVE || liveSlide ? 1500 : 4000);
+  const revealingPodium = liveSlide?.type === "q" && liveSlide.rows.some(row => !row);
+  const pollDelay = revealingPodium ? PODIUM_REVEAL_MS / 2 : liveSlide?.type === "intro" ? 850 : LIVE || liveSlide ? 1500 : 4000;
+  setTimeout(pollLive, pollDelay);
 }
 let podiumTimer = null, podiumGeneration = 0, pendingPodium = false, retryIndex = null;
 function cancelPodium(){
@@ -1306,7 +1308,7 @@ async function revealPodium(index){
     podiumTimer = setTimeout(() => {
       podiumTimer = null;
       if (view === "present" && si === index) revealPodium(index+1);
-    }, 3200);
+    }, PODIUM_REVEAL_MS);
   }
 }
 function step(dir){
@@ -1331,7 +1333,7 @@ function step(dir){
     });
     return;
   }
-  // The step that reveals #1: drumroll first.
+  // The bonus winner gets a drumroll.
   if (dir > 0 && s2.type === "bonusWinner" && !s2.bonus.pokemon){
     drumming = true; si = nextI; showFrame(); drumroll(1.6);
     setTimeout(() => {
